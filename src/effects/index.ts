@@ -1,3 +1,5 @@
+import type { BandingResource, RenderPassOptions } from 'wgsl-renderer'
+
 enum PropertyType {
     Float = 'float',
     Vec2 = 'vec2',
@@ -32,14 +34,48 @@ type Uniforms = {
     getBuffer: { (): GPUBuffer };
 }
 
+interface EffectOptions {
+    name: string;
+    properties: PropertyList;
+    uniforms: Uniforms;
+    shaderCode: string;
+    resources?: BandingResource[]
+}
+
 class Effect {
-    constructor(public name: string, public properties: PropertyList, public uniforms: Uniforms) {}
+    name: string
+    properties: PropertyList
+    uniforms: Uniforms
+    shaderCode: string
+    resources: BandingResource[] | undefined
+
+    constructor(options: EffectOptions) {
+        this.name = options.name
+        this.properties = options.properties
+        this.uniforms = options.uniforms
+        this.shaderCode = options.shaderCode
+        this.resources = options.resources
+    }
 
     applyUniforms() {
         this.uniforms.apply()
     }
+
+    getPassOptions(): RenderPassOptions {
+        return {
+            name: this.name,
+            shaderCode: this.shaderCode,
+            resources: this.resources || [],
+        }
+    }
 }
 
-export { Effect }
+export {
+    PropertyType,
+    Effect, 
+}
 
-export type { PropertyType, PropertyValue, Property, PropertyList }
+export type {
+    PropertyValue,
+    Property, PropertyList, 
+}

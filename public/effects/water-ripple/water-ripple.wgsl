@@ -1,10 +1,7 @@
 struct Uniforms {
     resolution: vec2<f32>, // x=res.x y=res.y
-    time: f32,
-    pointer: vec2<f32>, // x=ptr.x y=ptr.y
     miku_tex_resolution: vec2<f32>, // x=tex.width y=tex.height
-    mask_tex_resolution: vec2<f32>, // x=tex.width y=tex.height
-    normal_tex_resolution: vec2<f32>, // x=tex.width y=tex.height
+    time: f32,
     speed: f32,
     scroll_speed: f32,
     angle: f32,
