@@ -1,4 +1,4 @@
-import type { WGSLRenderer } from 'wgsl-renderer'
+import type { PassTextureRef, WGSLRenderer } from 'wgsl-renderer'
 import pinia from 'stores/index'
 import type { PropertyList } from './index'
 import { Effect, PropertyType } from './index'
@@ -9,8 +9,8 @@ let shaderCode: string | null = null
 let normalTexture: GPUTexture | null = null
 
 export async function createWaterRippleEffect(renderer: WGSLRenderer, textures: {
-    baseTexture: GPUTexture,
-    maskTexture: GPUTexture,
+    baseTexture: GPUTexture | PassTextureRef,
+    maskTexture: GPUTexture | PassTextureRef,
 }) {
 
     const wrUniforms = renderer.createUniforms(16)

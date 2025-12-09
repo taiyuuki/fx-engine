@@ -1,4 +1,4 @@
-import type { BandingResource, RenderPassOptions } from 'wgsl-renderer'
+import type { BindingResource, RenderPassOptions } from 'wgsl-renderer'
 
 enum PropertyType {
     Float = 'float',
@@ -39,7 +39,7 @@ interface EffectOptions {
     properties: PropertyList;
     uniforms: Uniforms;
     shaderCode: string;
-    resources?: BandingResource[]
+    resources?: BindingResource[]
 }
 
 class Effect {
@@ -47,7 +47,7 @@ class Effect {
     properties: PropertyList
     uniforms: Uniforms
     shaderCode: string
-    resources: BandingResource[] | undefined
+    resources: BindingResource[] | undefined
 
     constructor(options: EffectOptions) {
         this.name = options.name

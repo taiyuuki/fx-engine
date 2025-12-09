@@ -24,8 +24,8 @@ importers:
         specifier: ^4.0.12
         version: 4.6.3(vue@3.5.25(typescript@5.9.3))
       wgsl-renderer:
-        specifier: ^0.1.4
-        version: 0.1.4
+        specifier: ^0.1.5
+        version: 0.1.5
     devDependencies:
       '@iconify/json':
         specifier: ^2.2.415
@@ -3246,8 +3246,8 @@ packages:
   webpack-virtual-modules@0.6.2:
     resolution: {integrity: sha512-66/V2i5hQanC51vBQKPH4aI8NMAcBW59FVBs+rC7eGHupMyfn34q7rZIE+ETlJ+XTevqfUhVVBgSUNSW2flEUQ==}
 
-  wgsl-renderer@0.1.4:
-    resolution: {integrity: sha512-cFHhpmm+PSjDLQfl42sPIANSaJoFZDb1uWo/GN3s2ZQwWkkmHYkBYNzYv4rdhHVXifqHjcMZ1v9KBUNpW3EKFw==}
+  wgsl-renderer@0.1.5:
+    resolution: {integrity: sha512-xqkOcz/xQL3zqEJC6On3OCroZfIWk6rmRlj2t/PDiI+vchrC2ymsThmHbeR94ALzbTCZUFU9t+YO2GK+JtWOnQ==}
 
   which-boxed-primitive@1.1.1:
     resolution: {integrity: sha512-TbX3mj8n0odCBFVlY8AxkqcHASw3L60jIuF8jFP78az3C2YhmGvqbHBpAjTRH2/xqYunrJ9g1jSyjCjpoWzIAA==}
@@ -6886,7 +6886,7 @@ snapshots:
 
   webpack-virtual-modules@0.6.2: {}
 
-  wgsl-renderer@0.1.4: {}
+  wgsl-renderer@0.1.5: {}
 
   which-boxed-primitive@1.1.1:
     dependencies:

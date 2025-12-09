@@ -39,8 +39,6 @@ const useLayers = defineStore('layers', {
                 image.passes.push({
                     name: 'base',
                     shaderCode: baseShader,
-                    blendMode: 'alpha',
-                    renderToCanvas: true,
                     resources: [
                         texture,
                         sampler,
@@ -70,7 +68,7 @@ const useLayers = defineStore('layers', {
                 this.images.push(image)
                 this.renderer.addPass(image.passes[0]!)
                 const waterRipplerEffect = await createWaterRippleEffect(this.renderer as WGSLRenderer, {
-                    baseTexture: texture,
+                    baseTexture: this.renderer.getPassTexture('base'),
                     maskTexture: maskTexture,
                 })
                 this.renderer.addPass(waterRipplerEffect.getPassOptions())
