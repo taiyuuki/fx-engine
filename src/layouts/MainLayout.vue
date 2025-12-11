@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import SideBar from './SideBar.vue'
+import SideBar from 'src/pages/SideBar.vue'
 
 const extraTabs = ref<{
     title: string

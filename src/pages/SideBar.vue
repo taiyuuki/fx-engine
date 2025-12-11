@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import ImageList from './side-bar/ImageList.vue'
-import EffectProps from './side-bar/EffectProps.vue'
+import PropsBar from './side-bar/PropsBar.vue'
 
 const splitterModel = ref(50)
 </script>
@@ -16,7 +16,7 @@ const splitterModel = ref(50)
     </template>
 
     <template #after>
-      <EffectProps />
+      <PropsBar />
     </template>
   </q-splitter>
 </template>

@@ -1,5 +1,8 @@
 <script setup lang="ts">
 import { createWGSLRenderer } from 'wgsl-renderer'
+import MaskCanvas from 'src/components/MaskCanvas.vue'
+import { currentEffect, currentImage, maskCanvasRef, maskControls } from 'src/pages/side-bar/composibles'
+import { currentMask, maskInfo } from 'src/composibles/mask'
 
 const $q = useQuasar()
 const layers = useLayers()
@@ -9,11 +12,35 @@ const pageStyle = computed(() => {
 })
 
 const $renderCanvas = useTemplateRef<HTMLCanvasElement>('renderCanvas')
+
 onMounted(async() => {
     if ($renderCanvas.value) {
         layers.renderer = await createWGSLRenderer($renderCanvas.value)
+        layers.renderer.loopRender(t => {
+            layers.updateFrame.forEach(f => f(t))
+        })
     }
 })
+
+// 处理蒙版更新
+async function handleMaskUpdate(dataUrl: string) {
+    if (layers.renderer && currentEffect.value) {
+        const { texture, width, height } = await layers.renderer.loadImageTexture(dataUrl)
+        currentMask.value = {
+            url: dataUrl,
+            texture,
+            width,
+            height,
+        }
+
+        currentEffect.value.setResource(maskInfo.value.bindingIndex, texture)
+        const maskName = `${currentImage.value!.crc}.${currentEffect.value.name}__mask`
+        layers.materials.set(maskName, currentMask.value)
+        currentEffect.value.refs[maskInfo.value.refKey!] = maskName
+
+        layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
+    }
+}
 </script>
 
 <template>
@@ -26,6 +53,17 @@ onMounted(async() => {
       width="1280"
       height="720"
       class="absolute"
+    />
+    <MaskCanvas
+      ref="maskCanvasRef"
+      :width="1280"
+      :height="720"
+      :brush-size="maskControls.brushSize"
+      :brush-hardness="maskControls.brushHardness"
+      :brush-amount="maskControls.brushAmount"
+      :mask-opacity="maskControls.maskOpacity"
+      :is-draw-mode="maskControls.isDrawMode"
+      @mask-update="handleMaskUpdate"
     />
   </div>
 </template>

@@ -100,4 +100,7 @@ declare global {
   // @ts-ignore
   export type { PiniaCustomProperties } from './stores/index'
   import('./stores/index')
+  // @ts-ignore
+  export type { Material, ImageLayer } from './stores/layers'
+  import('./stores/layers')
 }

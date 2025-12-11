@@ -1,20 +1,15 @@
 <script setup lang="ts">
+import { selectImage } from './composibles'
+
 const $inputImage = useTemplateRef<HTMLInputElement>('inputImage')
 
 const layers = useLayers()
 
-function addImageLayer(e: Event) {
+async function addImageLayer(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0]
     if (file) {
-        layers.addImage({
-            blob: file,
-            name: file.name,
-            size: {
-                width: 0,
-                height: 0,
-            },
-            passes: [],
-        })
+            
+        layers.addImage(file)
     }
 }
 </script>
@@ -42,10 +37,11 @@ function addImageLayer(e: Event) {
 
     <q-list>
       <q-item
-        v-for="(image, index) in layers.images"
+        v-for="(image, index) in layers.imageLayers"
         :key="index"
         v-ripple
         clickable
+        @click="selectImage(image)"
       >
         <q-item-section side>
           <div class="i-ic-image w-6 h-6" />

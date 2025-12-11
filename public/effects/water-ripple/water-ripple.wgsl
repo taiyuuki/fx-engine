@@ -8,6 +8,7 @@ struct Uniforms {
     ratio: f32,
     strength: f32,
     scale: f32,
+    use_mask: f32,
 };
 
 @group(0) @binding(0) var<uniform> uniforms: Uniforms;
@@ -60,12 +61,16 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     tex_coord_ripple.y *= ratio;
     tex_coord_ripple2.y *= ratio;
 
-    let mask = textureSample(mask_tex, samp, uv);
+    var mask = 1.0;
     let n1 = textureSample(normal_tex, samp, fract(tex_coord_ripple)) * 2.0 - 1.0;
     let n2 = textureSample(normal_tex, samp, fract(tex_coord_ripple2)) * 2.0 - 1.0;
     let normal = normalize(vec3(n1.xy + n2.xy, n1.z));
 
-    let tex_coord = uv + normal.xy * strength * strength * mask.r;
+    if uniforms.use_mask > 0.5 {
+        mask = textureSample(mask_tex, samp, uv).r;
+    }
 
-    return textureSample(tex, samp, tex_coord); // alpha mask
+    let tex_coord = uv + normal.xy * strength * strength;
+
+    return textureSample(tex, samp, mix(uv, tex_coord, mask));
 }
