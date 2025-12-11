@@ -1,7 +1,7 @@
 import type { PassTextureRef, WGSLRenderer } from 'wgsl-renderer'
 import pinia from 'stores/index'
-import type { PropertyList } from './index'
-import { Effect, PropertyType, createProperty } from './index'
+import type { PropertyList } from '.'
+import { Effect, PropertyType, createProperty } from '.'
 
 const samplerStore = useSamplerStore(pinia)
 
