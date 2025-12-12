@@ -3,6 +3,10 @@ import { createWaterRippleEffect } from 'src/effects/water-ripple'
 import { crc32 } from 'src/utils/crc'
 import type { RenderPassOptions, WGSLRenderer } from 'wgsl-renderer'
 import { defineStore } from 'pinia'
+import { createIrisMovementEffect } from 'src/effects/iris-movement'
+import pinia from 'stores/index'
+
+const pointer = usePointer(pinia)
 
 export interface Material {
     url: string
@@ -78,6 +82,42 @@ const useLayers = defineStore('layers', {
             }
         },
 
+        async getDefaultMaskTexture(colorValue: number) {
+            const materialName = `defaultMask-${colorValue}`
+            if (!this.materials.has(materialName)) {
+                
+                const imageData = new ImageData(100, 100)
+                for (let i = 0; i < imageData.data.length; i += 4) {
+                    imageData.data[i] = colorValue
+                    imageData.data[i + 1] = colorValue
+                    imageData.data[i + 2] = colorValue
+                    imageData.data[i + 3] = 255
+                }
+                const cvs = document.createElement('canvas')
+                cvs.width = 100
+                cvs.height = 100
+                const ctx = cvs.getContext('2d')!
+                ctx.putImageData(imageData, 0, 0)
+                const whiteBlob = await new Promise<Blob>(resolve => {
+                    cvs.toBlob(blob => {
+                        resolve(blob!)
+                    })
+                })
+    
+                const { texture: maskTexture, width, height } = await this.renderer!.loadImageTexture(whiteBlob)
+                this.materials.set(materialName, {
+                    url: URL.createObjectURL(whiteBlob),
+                    texture: maskTexture,
+                    width,
+                    height,
+                })
+            }
+
+            const { texture } = this.materials.get(materialName)!
+
+            return texture
+        },
+
         async createImageLayer(file: File): Promise<ImageLayer> {
             const data = new Uint8Array(await file.arrayBuffer())
             const crc = crc32(data).toString(16)
@@ -96,56 +136,74 @@ const useLayers = defineStore('layers', {
             }
         },
 
+        async addWaterRippleEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            const maskTexture = await this.getDefaultMaskTexture(0)
+
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : `${imageLayer.crc}__base-shader`
+            const waterRipplerEffect = await createWaterRippleEffect(`${imageLayer.crc}-effect-${c}__water-ripple`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                maskTexture: maskTexture,
+            })
+
+            imageLayer.effects.push(waterRipplerEffect)
+        
+            this.renderer.addPass(waterRipplerEffect.getPassOptions())
+
+            this.updateFrame.push(t => {
+                waterRipplerEffect.uniforms.values[4] = t * 0.001
+                waterRipplerEffect.uniforms.apply()
+            })
+        },
+
+        async addIrisMovementEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            const maskTexture = await this.getDefaultMaskTexture(0)
+
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : `${imageLayer.crc}__base-shader`
+            const irisMovementEffect = await createIrisMovementEffect(`${imageLayer.crc}-effect-${c}__irir-movement`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                maskTexture: maskTexture,
+            })
+
+            imageLayer.effects.push(irisMovementEffect)
+        
+            this.renderer.addPass(irisMovementEffect.getPassOptions())
+
+            this.updateFrame.push(() => {
+                irisMovementEffect.uniforms.values[2] = pointer.x
+                irisMovementEffect.uniforms.values[3] = pointer.y
+                irisMovementEffect.uniforms.apply()
+            })
+        },
+
         async addEffect(layerIndex: number, effectName: string) {
             const imageLayer = this.imageLayers[layerIndex]
-            if (!imageLayer || !this.renderer) return
+            if (!imageLayer) return
             switch (effectName) {
                 case 'water-ripple':
-                    const imageData = new ImageData(imageLayer.size.width, imageLayer.size.height)
-                    for (let i = 0; i < imageData.data.length; i += 4) {
-                        imageData.data[i] = 255
-                        imageData.data[i + 1] = 255
-                        imageData.data[i + 2] = 255
-                        imageData.data[i + 3] = 255
-                    }
-
-                    if (!this.materials.has('white_mask')) {
-                        const cvs = document.createElement('canvas')
-                        cvs.width = 100
-                        cvs.height = 100
-                        const ctx = cvs.getContext('2d')!
-                        ctx.putImageData(imageData, 0, 0)
-                        const whiteBlob = await new Promise<Blob>(resolve => {
-                            cvs.toBlob(blob => {
-                                resolve(blob!)
-                            })
-                        })
-    
-                        const { texture: maskTexture, width, height } = await this.renderer.loadImageTexture(whiteBlob)
-                        this.materials.set('white_mask', {
-                            url: URL.createObjectURL(whiteBlob),
-                            texture: maskTexture,
-                            width,
-                            height,
-                        })
-                    }
-
-                    const { texture: maskTexture } = this.materials.get('white_mask')!
-
-                    const waterRipplerEffect = await createWaterRippleEffect(this.renderer as WGSLRenderer, {
-                        baseTexture: this.renderer.getPassTexture(`${imageLayer.crc}__base-shader`),
-                        maskTexture: maskTexture,
-                    })
-
-                    imageLayer.effects.push(waterRipplerEffect)
-        
-                    this.renderer.addPass(waterRipplerEffect.getPassOptions())
-
-                    this.updateFrame.push(t => {
-                        waterRipplerEffect.uniforms.values[4] = t * 0.001
-                        waterRipplerEffect.uniforms.apply()
-                    })
+                    await this.addWaterRippleEffect(imageLayer)
                     break
+                case 'iris-movement':
+                    await this.addIrisMovementEffect(imageLayer)
+                    break
+            }
+        },
+
+        removeEffect(e: Effect) {
+            this.renderer?.removePass(e.name)
+        },
+
+        switchEnable(e: Effect) {
+            if (e.enable) {
+                this.renderer?.enablePass(e.name)
+            }
+            else {
+                this.renderer?.disablePass(e.name)
             }
         },
     },

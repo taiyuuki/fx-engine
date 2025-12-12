@@ -10,7 +10,6 @@ struct Uniforms {
 @group(0) @binding(2) var samp : sampler;
 @group(0) @binding(3) var<uniform> uniforms: Uniforms;
 
-
 struct VSOut {
     @builtin(position) pos: vec4<f32>,
     @location(0) uv: vec2<f32>,
@@ -27,8 +26,7 @@ fn vs_main(@location(0) p: vec3<f32>) -> VSOut {
 }
 
 @fragment
-fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
-    let uv = in.uv;
+fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
 
     // Convert mouse position to normalized coordinates
     let mousePos = uniforms.pointer / uniforms.resolution;

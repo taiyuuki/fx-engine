@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { currentMask, maskInfo } from 'src/composibles/mask'
-import { propBarDisplay } from './composibles'
+import { maskCanvasRef, maskControls, propBarDisplay } from './composibles'
 
 const props = defineProps<{ propName: string, bindingIndex: number, propertyIndex: number }>()
 const layers = useLayers()
@@ -16,6 +16,11 @@ function drawMask() {
     maskInfo.value.propertyIndex = props.propertyIndex
     maskInfo.value.refKey = 'alpha_mask'
     propBarDisplay.value = 'maskProps'
+    // 直接进入绘制模式
+    nextTick(() => {
+        maskControls.value.isDrawMode = true
+        maskCanvasRef.value?.toggleDrawMode()
+    })
 }
 </script>
 

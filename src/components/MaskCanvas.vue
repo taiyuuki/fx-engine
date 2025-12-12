@@ -153,13 +153,12 @@ onMounted(() => {
 
 <template>
   <div
-    class="mask-canvas-container"
     @mousemove="updateBrushPreview"
     @mouseleave="hideBrushPreview"
   >
     <canvas
       ref="canvas"
-      class="mask-canvas absolute inset-0"
+      class="mask-canvas absolute"
       :class="{ 'cursor-crosshair': isDrawMode }"
       :style="{ opacity: showMask ? maskOpacity : 0 }"
       @mousedown="startDrawing"

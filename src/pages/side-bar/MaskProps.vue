@@ -2,16 +2,19 @@
 import { currentMask, maskInfo } from 'src/composibles/mask'
 import { DisplayType, maskCanvasRef, maskControls, propBarDisplay } from './composibles'
 
+function clearMask() {
+    maskCanvasRef.value?.clearMask()
+}
+
 function toggleDrawMode() {
     maskControls.value.isDrawMode = !maskControls.value.isDrawMode
     maskCanvasRef.value?.toggleDrawMode()
 }
 
-function clearMask() {
-    maskCanvasRef.value?.clearMask()
-}
-
 function goBack(target: DisplayType) {
+    if (maskControls.value.isDrawMode) {
+        maskCanvasRef.value?.toggleDrawMode()
+    }
     propBarDisplay.value = target
     currentMask.value = null
     maskInfo.value = {
@@ -73,10 +76,7 @@ function goBack(target: DisplayType) {
     </div>
 
     <!-- 画笔设置 -->
-    <div
-      v-show="maskControls.isDrawMode"
-      class="space-y-4"
-    >
+    <div class="space-y-4">
       <!-- 画笔大小 -->
       <div class="space-y-2">
         <div class="flex items-center justify-between">
@@ -89,7 +89,7 @@ function goBack(target: DisplayType) {
         </div>
         <q-slider
           v-model="maskControls.brushSize"
-          :min="10"
+          :min="1"
           :max="100"
           class="flex-1"
           @change="(v: number) => maskControls.brushSize = v"
@@ -164,16 +164,6 @@ function goBack(target: DisplayType) {
         <span class="i-carbon-trash-can" />
         清除蒙版
       </button>
-    </div>
-
-    <!-- 提示信息 -->
-    <div
-      v-show="!maskControls.isDrawMode"
-      class="mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg"
-    >
-      <p class="text-sm text-blue-700 dark:text-blue-300">
-        点击"开始绘制"按钮进入蒙版绘制模式，在画布上绘制需要应用特效的区域。
-      </p>
     </div>
   </div>
 </template>

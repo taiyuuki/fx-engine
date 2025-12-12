@@ -15,7 +15,7 @@ const maskControls = ref<{
 }>({
     brushSize: 50,
     brushHardness: 0.8,
-    brushAmount: 200,
+    brushAmount: 255,
     maskOpacity: 0.5,
     isDrawMode: false,
 })

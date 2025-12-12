@@ -8,7 +8,7 @@ const samplerStore = useSamplerStore(pinia)
 let shaderCode: string | null = null
 let normalTexture: GPUTexture | null = null
 
-export async function createWaterRippleEffect(renderer: WGSLRenderer, textures: {
+export async function createWaterRippleEffect(name: string, renderer: WGSLRenderer, textures: {
     baseTexture: GPUTexture | PassTextureRef,
     maskTexture: GPUTexture | PassTextureRef,
 }) {
@@ -45,8 +45,8 @@ export async function createWaterRippleEffect(renderer: WGSLRenderer, textures: 
         createProperty({
             name: 'alpha_mask',
             label: '不透明蒙版',
-            type: PropertyType.Texture,
-            defaultValue: 'white_mask',
+            type: PropertyType.AlphaMask,
+            defaultValue: 'defaultMask-0',
             uniformIndex: [-3, -1], // [着色器绑定号的相反数，属性号的相反数]
             condition: () => wrUniforms.values[11] === 1.0,
         }),                   
@@ -106,7 +106,8 @@ export async function createWaterRippleEffect(renderer: WGSLRenderer, textures: 
     }
 
     return new Effect({
-        name: 'Water Ripple',
+        name,
+        label: '水波纹',
         properties,
         uniforms: wrUniforms,
         shaderCode,

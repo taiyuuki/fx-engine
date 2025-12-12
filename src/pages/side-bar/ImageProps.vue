@@ -1,17 +1,23 @@
 <script setup lang="ts">
+import { Effect } from 'src/effects'
 import { currentEffect, currentImage, propBarDisplay, selectEffect } from './composibles'
 
 const effectsModal = ref(false)
 const active = ref<string | null>(null)
 const layers = useLayers()
 
-function addEffect() {
+async function addEffect() {
     switch (active.value) {
         case 'water-ripple':
-
-            layers.addEffect(0, 'water-ripple')
+            await layers.addEffect(0, 'water-ripple')
+            break
+ 
+        case 'iris-movement':
+            await layers.addEffect(0, 'iris-movement')
             break
     }
+    currentEffect.value = currentImage.value?.effects.at(-1) ?? null
+    propBarDisplay.value = 'effectProps'
     effectsModal.value = false
 }
 
@@ -19,6 +25,16 @@ function editEffect() {
     if (currentEffect) {
         propBarDisplay.value = 'effectProps'
     }
+}
+
+function removeEffect(e: Effect, i: number) {
+    currentImage.value?.effects.splice(i, 1)
+    layers.removeEffect(e)
+}
+
+function enableEffect(e: Effect) {
+    e.enable = !e.enable
+    layers.switchEnable(e)
 }
 </script>
 
@@ -60,15 +76,32 @@ function editEffect() {
       class="p-1"
     >
       <q-item
-        v-for="e in currentImage?.effects"
+        v-for="(e, i) in currentImage?.effects"
         :key="e.name"
-        v-ripple
+        :active="currentEffect?.name === e.name"
+        active-class="bg-primary text-white"
+        class="cursor-auto select-none"
         clickable
         @click="selectEffect(e)"
       >
-        <q-item-section>
-          {{ e.name }}
-        </q-item-section>
+        <div class="flex-1 flex items-center">
+          {{ e.label }}
+        </div>
+
+        <div class="w-fit flex items-center gap-3">
+          <div
+            class="w-5 h-5 text-gray-500 hover:text-inherit" 
+            :class="{
+              'i-mdi:eye-outline': e.enable,
+              'i-mdi:eye-off-outline': !e.enable,
+            }"
+            @click="enableEffect(e)"
+          />
+          <div
+            class="i-mdi:trash-can-outline w-5 h-5 text-gray-500 hover:text-inherit"
+            @click="removeEffect(e, i)"
+          />
+        </div>
       </q-item>
     </q-list>
   </div>
@@ -107,6 +140,15 @@ function editEffect() {
             @click="active = 'water-ripple'"
           >
             <q-item-section>水波纹</q-item-section>
+          </q-item>
+          <q-item
+            v-ripple
+            clickable
+            active-class="bg-primary text-white"
+            :active="active === 'iris-movement'"
+            @click="active = 'iris-movement'"
+          >
+            <q-item-section>虹膜移动</q-item-section>
           </q-item>
         </q-list>
       </q-card-section>

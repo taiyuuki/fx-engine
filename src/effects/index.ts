@@ -5,6 +5,7 @@ enum PropertyType {
     Vec2 = 'vec2',
     Color = 'color',
     Texture = 'texture',
+    AlphaMask = 'alpha_mask',
     Checkbox = 'checkbox',
     Array = 'array',
 }
@@ -14,6 +15,7 @@ interface PropertyValueMap {
     [PropertyType.Vec2]: [number, number];
     [PropertyType.Color]: [number, number, number];
     [PropertyType.Texture]: string;
+    [PropertyType.AlphaMask]: string;
     [PropertyType.Checkbox]: boolean;
     [PropertyType.Array]: number[];
 }
@@ -40,6 +42,7 @@ type Uniforms = {
 
 interface EffectOptions {
     name: string;
+    label: string;
     properties: PropertyList;
     uniforms: Uniforms;
     shaderCode: string;
@@ -56,7 +59,9 @@ function createProperty<P extends PropertyType>(options: Optional<Property<P>, O
 
 class Effect {
     name: string
+    label: string
     properties: PropertyList
+    enable: boolean = true
     uniforms: Uniforms
     shaderCode: string
     resources: BindingResource[] | undefined
@@ -64,6 +69,7 @@ class Effect {
 
     constructor(options: EffectOptions) {
         this.name = options.name
+        this.label = options.label
         this.properties = options.properties
         this.uniforms = options.uniforms
         this.shaderCode = options.shaderCode
@@ -75,6 +81,7 @@ class Effect {
             const p = this.properties[k]!
             this.refs[p.name] = p.defaultValue
         }
+        console.log(this.refs)
     }
 
     applyUniforms(name: string) {

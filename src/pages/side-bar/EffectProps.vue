@@ -67,7 +67,7 @@ import MaskMenu from './MaskMenu.vue'
               @update:model-value="currentEffect.applyUniforms(p.name)"
             />
           </template>
-          <template v-if="p.type === PropertyType.Texture">
+          <template v-if="p.type === PropertyType.AlphaMask">
             <MaskMenu
               :prop-name="currentEffect.refs[p.name] as string"
               :binding-index="-p.uniformIndex[0]"

@@ -6,12 +6,35 @@ import { currentMask, maskInfo } from 'src/composibles/mask'
 
 const $q = useQuasar()
 const layers = useLayers()
+const pointer = usePointer()
 
 const pageStyle = computed(() => {
     return { height: `${$q.screen.height - 50}px` }
 })
 
 const $renderCanvas = useTemplateRef<HTMLCanvasElement>('renderCanvas')
+
+const moveEvent = (e: MouseEvent) => {
+    const cvs = $renderCanvas.value!
+    const r = cvs.getBoundingClientRect()
+    pointer.lx = pointer.x
+    pointer.ly = pointer.y
+    pointer.x = (e.clientX - r.left) * window.devicePixelRatio
+    pointer.y = (e.clientY - r.top) * window.devicePixelRatio
+}
+
+const leaveEvent = () => {
+    pointer.$reset()
+}
+
+const enterEvent = (e: MouseEvent) => {
+    const cvs = $renderCanvas.value!
+    const r = cvs.getBoundingClientRect()
+    pointer.x = (e.clientX - r.left) * window.devicePixelRatio
+    pointer.y = (e.clientY - r.top) * window.devicePixelRatio
+    pointer.lx = pointer.x
+    pointer.ly = pointer.y
+}
 
 onMounted(async() => {
     if ($renderCanvas.value) {
@@ -53,6 +76,9 @@ async function handleMaskUpdate(dataUrl: string) {
       width="1280"
       height="720"
       class="absolute"
+      @pointermove="moveEvent"
+      @pointerleave="leaveEvent"
+      @pointerenter="enterEvent"
     />
     <MaskCanvas
       ref="maskCanvasRef"
