@@ -11,11 +11,11 @@ struct Uniforms {
     use_mask: f32,
 };
 
-@group(0) @binding(0) var<uniform> uniforms: Uniforms;
-@group(0) @binding(1) var samp : sampler;
-@group(0) @binding(2) var tex : texture_2d<f32>;
-@group(0) @binding(3) var mask_tex : texture_2d<f32>;
-@group(0) @binding(4) var normal_tex : texture_2d<f32>;
+@group(0) @binding(0) var tex : texture_2d<f32>;
+@group(0) @binding(1) var mask_tex : texture_2d<f32>;
+@group(0) @binding(2) var normal_tex : texture_2d<f32>;
+@group(0) @binding(3) var samp : sampler;
+@group(0) @binding(4) var<uniform> uniforms: Uniforms;
 
 struct VSOut {
     @builtin(position) pos: vec4<f32>,

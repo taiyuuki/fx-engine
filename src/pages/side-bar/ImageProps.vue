@@ -28,7 +28,14 @@ function editEffect() {
 }
 
 function removeEffect(e: Effect, i: number) {
-    currentImage.value?.effects.splice(i, 1)
+    const nextEffect = currentImage.value?.effects[i + 1]
+    if (!layers.renderer || !currentImage.value || !nextEffect?.resources || !currentEffect.value) return
+    const preEffect = currentImage.value?.effects[i - 1]
+    const prePassName = preEffect ? preEffect.name : baseLayerPassname(currentImage.value)
+    nextEffect.setResource(0, layers.renderer.getPassTexture(prePassName))
+    layers.renderer.updateBindGroupSetResources(nextEffect.name, 'default', nextEffect.resources!)
+    currentImage.value.effects[i + 1]
+    currentImage.value.effects.splice(i, 1)
     layers.removeEffect(e)
 }
 

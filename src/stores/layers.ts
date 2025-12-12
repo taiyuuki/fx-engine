@@ -41,6 +41,10 @@ async function createShader(name: string) {
     return shader
 }
 
+export function baseLayerPassname(imageLayer: ImageLayer) {
+    return `${imageLayer.crc}__base-shader`
+}
+
 const useLayers = defineStore('layers', {
     state: () => {
         return { 
@@ -142,7 +146,7 @@ const useLayers = defineStore('layers', {
             const maskTexture = await this.getDefaultMaskTexture(0)
 
             const c = imageLayer.effects.length
-            const prePassName = c ? imageLayer.effects[c - 1]!.name : `${imageLayer.crc}__base-shader`
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
             const waterRipplerEffect = await createWaterRippleEffect(`${imageLayer.crc}-effect-${c}__water-ripple`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
@@ -164,7 +168,7 @@ const useLayers = defineStore('layers', {
             const maskTexture = await this.getDefaultMaskTexture(0)
 
             const c = imageLayer.effects.length
-            const prePassName = c ? imageLayer.effects[c - 1]!.name : `${imageLayer.crc}__base-shader`
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
             const irisMovementEffect = await createIrisMovementEffect(`${imageLayer.crc}-effect-${c}__irir-movement`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,

@@ -16,7 +16,7 @@ function drawMask() {
     maskInfo.value.propertyIndex = props.propertyIndex
     maskInfo.value.refKey = 'alpha_mask'
     propBarDisplay.value = 'maskProps'
-    // 直接进入绘制模式
+
     nextTick(() => {
         maskControls.value.isDrawMode = true
         maskCanvasRef.value?.toggleDrawMode()

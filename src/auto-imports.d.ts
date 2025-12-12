@@ -11,6 +11,7 @@ declare global {
   const LocalStorage: typeof import('quasar').LocalStorage
   const Notify: typeof import('quasar').Notify
   const acceptHMRUpdate: typeof import('pinia').acceptHMRUpdate
+  const baseLayerPassname: typeof import('./stores/layers').baseLayerPassname
   const boot: typeof import('quasar/wrappers').boot
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp

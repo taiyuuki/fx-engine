@@ -47,7 +47,7 @@ export async function createWaterRippleEffect(name: string, renderer: WGSLRender
             label: '不透明蒙版',
             type: PropertyType.AlphaMask,
             defaultValue: 'defaultMask-0',
-            uniformIndex: [-3, -1], // [着色器绑定号的相反数，属性号的相反数]
+            uniformIndex: [-1, -1], // [着色器绑定号的相反数，属性号的相反数]
             condition: () => wrUniforms.values[11] === 1.0,
         }),                   
         createProperty({
@@ -112,11 +112,11 @@ export async function createWaterRippleEffect(name: string, renderer: WGSLRender
         uniforms: wrUniforms,
         shaderCode,
         resources: [
-            wrUniforms.getBuffer(),
-            samplerStore.getSampler('linear', renderer),
             textures.baseTexture,
             textures.maskTexture,
             normalTexture,
+            samplerStore.getSampler('linear', renderer),
+            wrUniforms.getBuffer(),
         ],
     })
 }

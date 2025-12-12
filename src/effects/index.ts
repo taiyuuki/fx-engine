@@ -81,7 +81,6 @@ class Effect {
             const p = this.properties[k]!
             this.refs[p.name] = p.defaultValue
         }
-        console.log(this.refs)
     }
 
     applyUniforms(name: string) {
