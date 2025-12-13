@@ -28,20 +28,15 @@ function editEffect() {
 }
 
 function removeEffect(e: Effect, i: number) {
-    const nextEffect = currentImage.value?.effects[i + 1]
-    if (!layers.renderer || !currentImage.value || !nextEffect?.resources || !currentEffect.value) return
-    const preEffect = currentImage.value?.effects[i - 1]
-    const prePassName = preEffect ? preEffect.name : baseLayerPassname(currentImage.value)
-    nextEffect.setResource(0, layers.renderer.getPassTexture(prePassName))
-    layers.renderer.updateBindGroupSetResources(nextEffect.name, 'default', nextEffect.resources!)
-    currentImage.value.effects[i + 1]
-    currentImage.value.effects.splice(i, 1)
-    layers.removeEffect(e)
+    if (!currentImage.value) {
+        return
+    }
+    layers.removeEffect(e, i)
 }
 
-function enableEffect(e: Effect) {
+function switchEnable(e: Effect, i: number) {
     e.enable = !e.enable
-    layers.switchEnable(e)
+    layers.switchEnable(e, i)
 }
 </script>
 
@@ -102,7 +97,7 @@ function enableEffect(e: Effect) {
               'i-mdi:eye-outline': e.enable,
               'i-mdi:eye-off-outline': !e.enable,
             }"
-            @click="enableEffect(e)"
+            @click="switchEnable(e, i)"
           />
           <div
             class="i-mdi:trash-can-outline w-5 h-5 text-gray-500 hover:text-inherit"
@@ -129,9 +124,7 @@ function enableEffect(e: Effect) {
           flat
           icon="close"
           color="white"
-        >
-          <q-tooltip>Close</q-tooltip>
-        </q-btn>
+        />
       </q-bar>
 
       <q-card-section>

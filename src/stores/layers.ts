@@ -5,6 +5,7 @@ import type { RenderPassOptions, WGSLRenderer } from 'wgsl-renderer'
 import { defineStore } from 'pinia'
 import { createIrisMovementEffect } from 'src/effects/iris-movement'
 import pinia from 'stores/index'
+import { currentImage } from 'src/pages/side-bar/composibles'
 
 const pointer = usePointer(pinia)
 
@@ -52,6 +53,7 @@ const useLayers = defineStore('layers', {
             imageLayers: [] as ImageLayer[],
             materials: new Map<string, Material>(),
             updateFrame: [] as { (t: number): void }[],
+            outputPass: [] as string[],
         }
     },
     actions: {
@@ -147,6 +149,7 @@ const useLayers = defineStore('layers', {
 
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+            this.outputPass.push(prePassName)
             const waterRipplerEffect = await createWaterRippleEffect(`${imageLayer.crc}-effect-${c}__water-ripple`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
@@ -169,6 +172,7 @@ const useLayers = defineStore('layers', {
 
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+            this.outputPass.push(prePassName)
             const irisMovementEffect = await createIrisMovementEffect(`${imageLayer.crc}-effect-${c}__irir-movement`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
@@ -198,17 +202,58 @@ const useLayers = defineStore('layers', {
             }
         },
 
-        removeEffect(e: Effect) {
-            this.renderer?.removePass(e.name)
+        byPass(e: Effect, i: number) {
+            if (!this.renderer || !e.resources || !currentImage.value) return -1
+            const passIndex = this.outputPass.findIndex(o => o === e.name)
+            const pre = this.outputPass[passIndex - 1]
+            const nextEffect = currentImage.value?.effects[i + 1]
+
+            if (pre && nextEffect?.resources) {
+                nextEffect.setResource(0, this.renderer.getPassTexture(pre))
+            
+                this.renderer?.updateBindGroupSetResources(nextEffect.name, 'default', nextEffect.resources)    
+                this.renderer?.switchBindGroupSet(nextEffect.name, 'default')
+            }
+
+            return passIndex
         },
 
-        switchEnable(e: Effect) {
+        rePass(e: Effect, i: number) {
+            if (!this.renderer || !e.resources || !currentImage.value) return
+            const passIndex = this.outputPass.findIndex(o => o === e.name)
+            const cur = this.outputPass[passIndex]
+            const nextEffect = currentImage.value?.effects[i + 1]
+            if (cur && nextEffect?.resources) {
+                nextEffect.setResource(0, this.renderer.getPassTexture(cur))
+                this.renderer?.updateBindGroupSetResources(nextEffect.name, 'default', nextEffect.resources)
+            }
+        },
+
+        removeEffect(e: Effect, i: number) {
+            let passIndex = -1
+            if (this.renderer?.getPassByName(e.name)?.enabled) {
+                passIndex = this.byPass(e, i)
+            }
+            else {
+                passIndex = this.outputPass.findIndex(o => o === e.name)
+            }
+            if (passIndex >= 0) { 
+                this.outputPass.splice(passIndex, 1) 
+            }
+
+            this.renderer?.removePass(e.name)
+            currentImage.value?.effects.splice(i, 1)         
+        },
+
+        switchEnable(e: Effect, i: number) {
             if (e.enable) {
                 this.renderer?.enablePass(e.name)
+                this.rePass(e, i)
             }
             else {
                 this.renderer?.disablePass(e.name)
-            }
+                this.byPass(e, i)
+            } 
         },
     },
     getters: {
