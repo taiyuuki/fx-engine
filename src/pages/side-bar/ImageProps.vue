@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import { Effect } from 'src/effects'
 import { currentEffect, currentImage, propBarDisplay, selectEffect } from './composibles'
 
 const effectsModal = ref(false)
@@ -7,15 +6,9 @@ const active = ref<string | null>(null)
 const layers = useLayers()
 
 async function addEffect() {
-    switch (active.value) {
-        case 'water-ripple':
-            await layers.addEffect(0, 'water-ripple')
-            break
- 
-        case 'iris-movement':
-            await layers.addEffect(0, 'iris-movement')
-            break
-    }
+    if (!active.value) return
+    await layers.addEffect(active.value)
+
     currentEffect.value = currentImage.value?.effects.at(-1) ?? null
     propBarDisplay.value = 'effectProps'
     effectsModal.value = false
@@ -27,16 +20,11 @@ function editEffect() {
     }
 }
 
-function removeEffect(e: Effect, i: number) {
+function removeEffect(i: number) {
     if (!currentImage.value) {
         return
     }
-    layers.removeEffect(e, i)
-}
-
-function switchEnable(e: Effect, i: number) {
-    e.enable = !e.enable
-    layers.switchEnable(e, i)
+    layers.removeEffect(i)
 }
 </script>
 
@@ -91,17 +79,17 @@ function switchEnable(e: Effect, i: number) {
         </div>
 
         <div class="w-fit flex items-center gap-3">
-          <div
+          <!-- <div
             class="w-5 h-5 text-gray-500 hover:text-inherit" 
             :class="{
               'i-mdi:eye-outline': e.enable,
               'i-mdi:eye-off-outline': !e.enable,
             }"
             @click="switchEnable(e, i)"
-          />
+          /> -->
           <div
             class="i-mdi:trash-can-outline w-5 h-5 text-gray-500 hover:text-inherit"
-            @click="removeEffect(e, i)"
+            @click="removeEffect(i)"
           />
         </div>
       </q-item>

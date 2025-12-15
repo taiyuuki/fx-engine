@@ -73,9 +73,9 @@ async function handleMaskUpdate(dataUrl: string) {
   >
     <canvas
       ref="renderCanvas"
-      width="1280"
-      height="720"
-      class="absolute"
+      width="3840"
+      height="2160"
+      class="absolute w-[1280px] h=[720px]"
       @pointermove="moveEvent"
       @pointerleave="leaveEvent"
       @pointerenter="enterEvent"

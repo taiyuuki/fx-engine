@@ -23,7 +23,11 @@ const maskControls = ref<{
 const maskCanvasRef = ref<any>(null)
 
 function selectImage(image: ImageLayer) {
-    currentImage.value = image
+    if (image !== currentImage.value) {
+        currentImage.value = image
+        propBarDisplay.value = 'imageProps'
+        currentEffect.value = null
+    }
 }
 
 function selectEffect(effect: Effect) {

@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { selectImage } from './composibles'
+import { currentImage, selectImage } from './composibles'
 
 const $inputImage = useTemplateRef<HTMLInputElement>('inputImage')
 
@@ -41,6 +41,9 @@ async function addImageLayer(e: Event) {
         :key="index"
         v-ripple
         clickable
+        :active="currentImage?.name === image.name"
+        active-class="bg-primary text-white"
+        class="cursor-auto select-none"
         @click="selectImage(image)"
       >
         <q-item-section side>

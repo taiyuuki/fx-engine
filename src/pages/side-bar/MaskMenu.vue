@@ -1,9 +1,21 @@
 <script setup lang="ts">
 import { currentMask, maskInfo } from 'src/composibles/mask'
-import { maskCanvasRef, maskControls, propBarDisplay } from './composibles'
+import { currentEffect, currentImage, maskCanvasRef, maskControls, propBarDisplay } from './composibles'
 
 const props = defineProps<{ propName: string, bindingIndex: number, propertyIndex: number }>()
 const layers = useLayers()
+const showTextureDialog = ref(false)
+const selectedTexture = ref<string | null>(null)
+
+const $inputEl = useTemplateRef<HTMLInputElement>('inputTexture')
+
+function inputCurrentImage() {
+    currentMask.value = material.value
+    maskInfo.value.bindingIndex = props.bindingIndex
+    maskInfo.value.propertyIndex = props.propertyIndex
+    maskInfo.value.refKey = 'alpha_mask'
+    $inputEl.value?.click()
+}
 
 const material = computed(() => {
 
@@ -21,6 +33,61 @@ function drawMask() {
         maskControls.value.isDrawMode = true
         maskCanvasRef.value?.toggleDrawMode()
     })
+}
+
+async function resolveCurrentImage(e: Event) {
+    const t = e.target as HTMLInputElement
+    const file = t.files?.[0]
+    if (layers.renderer && currentEffect.value && file) {
+        {
+            const { texture, width, height } = await layers.renderer.loadImageTexture(file)
+            currentMask.value = {
+                url: URL.createObjectURL(file),
+                texture,
+                width,
+                height,
+            }
+
+            currentEffect.value.setResource(maskInfo.value.bindingIndex, texture)
+            const maskName = `${currentImage.value!.crc}.${currentEffect.value.name}__mask`
+            layers.materials.set(maskName, currentMask.value)
+            currentEffect.value.refs[maskInfo.value.refKey!] = maskName
+            layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
+        }
+    }
+}
+
+function showTextureSelection() {
+
+    // 设置当前蒙版信息
+    currentMask.value = material.value
+    maskInfo.value.bindingIndex = props.bindingIndex
+    maskInfo.value.propertyIndex = props.propertyIndex
+    maskInfo.value.refKey = 'alpha_mask'
+
+    showTextureDialog.value = true
+    selectedTexture.value = null
+}
+
+function confirmTextureSelection() {
+    if (selectedTexture.value && layers.renderer && currentEffect.value) {
+        const textureData = layers.materials.get(selectedTexture.value)
+        if (textureData && textureData.texture) {
+
+            currentMask.value = textureData
+            currentEffect.value.setResource(maskInfo.value.bindingIndex, textureData.texture)
+            const maskName = `${currentImage.value!.crc}.${currentEffect.value.name}__mask`
+            layers.materials.set(maskName, textureData)
+            currentEffect.value.refs[maskInfo.value.refKey!] = maskName
+            layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
+        }
+    }
+    showTextureDialog.value = false
+}
+
+function cancelTextureSelection() {
+    showTextureDialog.value = false
+    selectedTexture.value = null
 }
 </script>
 
@@ -40,6 +107,114 @@ function drawMask() {
         label="绘制蒙版"
         @click="drawMask"
       />
+      <q-btn-dropdown
+        color="primary"
+        label="选择纹理"
+        class="block mt-2"
+      >
+        <q-list>
+          <q-item
+            v-close-popup
+            clickable
+            @click="showTextureSelection"
+          >
+            <q-item-section>
+              <q-item-label>从纹理库选择</q-item-label>
+            </q-item-section>
+          </q-item>
+
+          <q-item
+            v-close-popup
+            clickable
+            @click="inputCurrentImage"
+          >
+            <q-item-section>
+              <q-item-label>导入本地图片</q-item-label>
+              <input
+                ref="inputTexture"
+                type="file"
+                name="导入图片"
+                class="hidden"
+                @change="resolveCurrentImage"
+              >
+            </q-item-section>
+          </q-item>
+        </q-list>
+      </q-btn-dropdown>
     </div>
   </div>
+
+  <!-- 选择纹理对话框 -->
+  <q-dialog
+    v-model="showTextureDialog"
+    persistent
+  >
+    <q-card style="min-width: 500px">
+      <q-card-section class="row items-center q-pb-none">
+        <div class="text-h6">
+          选择纹理作为蒙版
+        </div>
+        <q-space />
+        <q-btn
+          v-close-popup
+          icon="close"
+          flat
+          round
+          dense
+          @click="cancelTextureSelection"
+        />
+      </q-card-section>
+
+      <q-card-section>
+        <div class="q-gutter-md">
+          <q-item
+            v-for="[name, texture] in layers.materials"
+            :key="name"
+            clickable
+            :class="{ 'bg-blue-100': selectedTexture === name }"
+            class="rounded-borders"
+            @click="selectedTexture = name"
+          >
+            <q-item-section avatar>
+              <q-img
+                :src="texture.url"
+                style="width: 60px; height: 60px"
+                class="rounded-borders"
+              />
+            </q-item-section>
+            <q-item-section>
+              <q-item-label>{{ name }}</q-item-label>
+              <q-item-label caption>
+                尺寸: {{ texture.width }} x {{ texture.height }}
+              </q-item-label>
+            </q-item-section>
+            <q-item-section
+              v-if="selectedTexture === name"
+              side
+            >
+              <q-icon
+                name="check"
+                color="primary"
+                size="sm"
+              />
+            </q-item-section>
+          </q-item>
+        </div>
+      </q-card-section>
+
+      <q-card-actions align="right">
+        <q-btn
+          flat
+          label="取消"
+          @click="cancelTextureSelection"
+        />
+        <q-btn
+          color="primary"
+          label="确定"
+          :disable="!selectedTexture"
+          @click="confirmTextureSelection"
+        />
+      </q-card-actions>
+    </q-card>
+  </q-dialog>
 </template>
