@@ -6,7 +6,7 @@ struct Uniforms {
 };
 
 @group(0) @binding(0) var tex : texture_2d<f32>;
-@group(0) @binding(1) var flow_tex : texture_2d<f32>;
+@group(0) @binding(1) var flowmask_tex : texture_2d<f32>;
 @group(0) @binding(2) var phase_tex : texture_2d<f32>;
 @group(0) @binding(3) var samp : sampler;
 @group(0) @binding(4) var<uniform> uniforms: Uniforms;
@@ -37,10 +37,11 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     let time = uniforms.time;
     let speed = uniforms.speed;
     let amp = uniforms.amp;
+    let scale = uniforms.scale;
 
-    let flow_phase = textureSample(phase_tex, samp, uv * uniforms.scale).r;
-    let flow_colors = textureSample(flow_tex, samp, uv).rg;
-    let flow_mask = flow_colors.rg - vec2<f32>(0.5, 0.5) * 2.0;
+    let flow_phase = textureSample(phase_tex, samp, uv * scale).r;
+    let flow_colors = textureSample(flowmask_tex, samp, uv).rg;
+    let flow_mask = (vec2<f32>(0.5, 0.5) - flow_colors.rg) * 2.0;
     let flow_amount = length(flow_mask);
 
     var cycles = vec4<f32>(

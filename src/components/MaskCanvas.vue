@@ -82,7 +82,7 @@ function initCanvas() {
 
 function clearCanvas(c: number) {
     if (!ctx.value) return
-    ctx.value.fillStyle = `rgb(${c}, ${c}, ${c})`
+    ctx.value.fillStyle = props.flowMode ? '#7F7F00' : `rgb(${c}, ${c}, ${c})`
     ctx.value.fillRect(0, 0, $canvas.value!.width, $canvas.value!.height)
     emit('maskUpdate', $canvas.value!.toDataURL())
 }

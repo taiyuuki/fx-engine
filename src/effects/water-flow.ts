@@ -42,7 +42,7 @@ export async function createWaterFlowEffect(name: string, renderer: WGSLRenderer
         }),
         createProperty({
             name: 'amp',
-            label: '数量',
+            label: '幅度',
             type: PropertyType.Float,
             defaultValue: 1.0,
             range: [0.01, 1.0],
