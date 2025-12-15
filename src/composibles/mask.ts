@@ -6,6 +6,7 @@ const maskInfo = ref({
     bindingIndex: -1,
     propertyIndex: -1,
     refKey: null as string | null,
+    flowMode: false,
 })
 
 export { currentMask, maskInfo }

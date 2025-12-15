@@ -6,6 +6,7 @@ enum PropertyType {
     Color = 'color',
     Texture = 'texture',
     AlphaMask = 'alpha_mask',
+    FlowMask = 'flow_mask',
     Checkbox = 'checkbox',
     Array = 'array',
 }
@@ -16,6 +17,7 @@ interface PropertyValueMap {
     [PropertyType.Color]: [number, number, number];
     [PropertyType.Texture]: string;
     [PropertyType.AlphaMask]: string;
+    [PropertyType.FlowMask]: string;
     [PropertyType.Checkbox]: boolean;
     [PropertyType.Array]: number[];
 }

@@ -72,6 +72,15 @@ import MaskMenu from './MaskMenu.vue'
               :prop-name="currentEffect.refs[p.name] as string"
               :binding-index="-p.uniformIndex[0]"
               :property-index="i"
+              :flow-mode="false"
+            />
+          </template>
+          <template v-if="p.type === PropertyType.FlowMask">
+            <MaskMenu
+              :prop-name="currentEffect.refs[p.name] as string"
+              :binding-index="-p.uniformIndex[0]"
+              :property-index="i"
+              :flow-mode="true"
             />
           </template>
         </div>

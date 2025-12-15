@@ -23,7 +23,7 @@ export async function createIrisMovementEffect(name: string, renderer: WGSLRende
             name: 'alpha_mask',
             label: '不透明蒙版',
             type: PropertyType.AlphaMask,
-            defaultValue: 'defaultMask-0',
+            defaultValue: 'defaultMask-000000',
             uniformIndex: [-1, 0], // [着色器绑定号的相反数，属性号的相反数]
         }),
         createProperty({

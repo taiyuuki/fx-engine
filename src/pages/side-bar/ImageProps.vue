@@ -138,6 +138,16 @@ function removeEffect(i: number) {
           >
             <q-item-section>虹膜移动</q-item-section>
           </q-item>
+
+          <q-item
+            v-ripple
+            clickable
+            active-class="bg-primary text-white"
+            :active="active === 'water-flow'"
+            @click="active = 'water-flow'"
+          >
+            <q-item-section>水流</q-item-section>
+          </q-item>
         </q-list>
       </q-card-section>
 

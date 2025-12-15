@@ -12,12 +12,14 @@ const maskControls = ref<{
     brushAmount: number
     maskOpacity: number
     isDrawMode: boolean
+    flowMode: boolean
 }>({
     brushSize: 50,
     brushHardness: 0.8,
     brushAmount: 255,
     maskOpacity: 0.5,
     isDrawMode: false,
+    flowMode: false,
 })
 
 const maskCanvasRef = ref<any>(null)

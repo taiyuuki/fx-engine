@@ -9,6 +9,7 @@ const props = defineProps<{
     brushAmount?: number
     maskOpacity?: number
     isDrawMode?: boolean
+    flowMode?: boolean
 }>()
 
 const emit = defineEmits<{ maskUpdate: [dataUrl: string] }>()
@@ -21,6 +22,13 @@ const brushSize = ref(props.brushSize || 50)
 const brushHardness = ref(props.brushHardness || 0.8)
 const brushAmount = ref(props.brushAmount || 200)
 const maskOpacity = ref(props.maskOpacity || 0.5)
+
+// 新增 flowMode 支持和上次位置用于计算方向
+const flowMode = ref(props.flowMode || false)
+const lastPos = ref<{ x: number; y: number } | null>(null)
+
+// 平滑后的方向，用于减少绘制时方向抖动
+const lastDir = ref<{ x: number; y: number }>({ x: 0, y: 1 })
 
 const isDrawing = ref(false)
 const showMask = ref(false)
@@ -59,6 +67,11 @@ watch(() => props.maskOpacity, val => {
     if (val !== undefined) maskOpacity.value = val
 })
 
+// 监听 flowMode prop
+watch(() => props.flowMode, val => {
+    flowMode.value = !!val
+})
+
 function initCanvas() {
     if (!$canvas.value) return
     ctx.value = $canvas.value.getContext('2d')!
@@ -77,8 +90,28 @@ function clearCanvas(c: number) {
 function startDrawing(e: MouseEvent) {
     if (!isDrawMode.value) return
     isDrawing.value = true
+
+    // 初始化 lastPos
+    const rect = $canvas.value!.getBoundingClientRect()
+    const x = (e.clientX - rect.left) * ($canvas.value!.width / rect.width)
+    const y = (e.clientY - rect.top) * ($canvas.value!.height / rect.height)
+    lastPos.value = { x, y }
     draw(e)
 }
+
+// 返回不带 alpha 的 rgb 对象
+function hexToRgb(hex: string) {
+    const h = hex.replace('#', '')
+
+    return {
+        r: Number.parseInt(h.slice(0, 2), 16),
+        g: Number.parseInt(h.slice(2, 4), 16),
+        b: Number.parseInt(h.slice(4, 6), 16),
+    }
+}
+
+// 在两个 hex 颜色间按 t (0..1) 插值，并附带 alpha
+// ...existing code...
 
 function draw(e: MouseEvent) {
     if (!isDrawing.value || !ctx.value || !$canvas.value) return
@@ -88,28 +121,114 @@ function draw(e: MouseEvent) {
     const y = (e.clientY - rect.top) * ($canvas.value.height / rect.height)
 
     ctx.value.globalCompositeOperation = 'source-over'
-    const colorValue = Math.round(brushAmount.value)
 
-    // 创建径向渐变来实现羽化效果
-    const gradient = ctx.value.createRadialGradient(x, y, 0, x, y, brushSize.value)
+    if (flowMode.value) {
 
-    // 计算羽化起始位置（hardness 越大，羽化范围越小）
-    const featherStart = brushSize.value * (brushHardness.value * 0.8)
+        // flow 模式
+        // 计算向量
+        let dx = 0
+        let dy = 1 // 默认向下
+        if (lastPos.value) {
+            dx = x - lastPos.value.x
+            dy = y - lastPos.value.y
 
-    // 设置渐变颜色
-    gradient.addColorStop(0, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 1)`)
-    gradient.addColorStop(featherStart / brushSize.value, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 1)`)
-    gradient.addColorStop(1, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 0)`)
+            // 停留不动时保持默认
+            if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+                dx = 0
+                dy = 1
+            }
+        }
 
-    ctx.value.fillStyle = gradient
-    ctx.value.beginPath()
-    ctx.value.arc(x, y, brushSize.value, 0, Math.PI * 2)
-    ctx.value.fill()
+        // 方向颜色映射
+        const colorMap = {
+            down: '7FFF00',
+            up: '7F0000',
+            right: 'FF7F00',
+            left: '007F00',
+        } as const
+
+        // 四方向加权平均（up/down/left/right）
+        const alpha = Math.max(0.02, Math.min(1, brushAmount.value / 255))
+        const len = Math.hypot(dx, dy)
+        let nx = 0
+        let ny = 1
+        if (len > 1e-4) {
+            nx = dx / len
+            ny = dy / len
+        }
+
+        // 指向平滑（指数移动平均）
+        const smooth = 0.25
+        lastDir.value.x = lastDir.value.x * (1 - smooth) + nx * smooth
+        lastDir.value.y = lastDir.value.y * (1 - smooth) + ny * smooth
+        const vx = lastDir.value.x
+        const vy = lastDir.value.y
+        let upW = Math.max(-vy, 0)
+        let downW = Math.max(vy, 0)
+        let leftW = Math.max(-vx, 0)
+        let rightW = Math.max(vx, 0)
+
+        let wsum = upW + downW + leftW + rightW
+        if (wsum <= 0) {
+            downW = 1
+            wsum = 1
+        }
+
+        upW /= wsum
+        downW /= wsum
+        leftW /= wsum
+        rightW /= wsum
+
+        const cUp = hexToRgb(colorMap.up)
+        const cDown = hexToRgb(colorMap.down)
+        const cLeft = hexToRgb(colorMap.left)
+        const cRight = hexToRgb(colorMap.right)
+
+        const rr = Math.round(cUp.r * upW + cDown.r * downW + cLeft.r * leftW + cRight.r * rightW)
+        const gg = Math.round(cUp.g * upW + cDown.g * downW + cLeft.g * leftW + cRight.g * rightW)
+        const bb = Math.round(cUp.b * upW + cDown.b * downW + cLeft.b * leftW + cRight.b * rightW)
+
+        const blendedSolid = `rgba(${rr}, ${gg}, ${bb}, ${alpha})`
+        const blendedTransparent = `rgba(${rr}, ${gg}, ${bb}, 0)`
+
+        // 径向渐变
+        const featherStart = brushSize.value * (brushHardness.value * 0.8)
+        const gradient = ctx.value.createRadialGradient(x, y, 0, x, y, brushSize.value)
+        gradient.addColorStop(0, blendedSolid)
+        gradient.addColorStop(featherStart / brushSize.value, blendedSolid)
+        gradient.addColorStop(1, blendedTransparent)
+
+        ctx.value.fillStyle = gradient
+        ctx.value.beginPath()
+        ctx.value.arc(x, y, brushSize.value, 0, Math.PI * 2)
+        ctx.value.fill()
+    }
+    else {
+      
+        const colorValue = Math.round(brushAmount.value)
+
+        const gradient = ctx.value.createRadialGradient(x, y, 0, x, y, brushSize.value)
+
+        const featherStart = brushSize.value * (brushHardness.value * 0.8)
+
+        gradient.addColorStop(0, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 1)`)
+        gradient.addColorStop(featherStart / brushSize.value, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 1)`)
+        gradient.addColorStop(1, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 0)`)
+
+        ctx.value.fillStyle = gradient
+        ctx.value.beginPath()
+        ctx.value.arc(x, y, brushSize.value, 0, Math.PI * 2)
+        ctx.value.fill()
+    }
+
+    // 更新 lastPos 以便下次计算方向
+    lastPos.value = { x, y }
 }
 
 function stopDrawing() {
     if (!isDrawing.value) return
     isDrawing.value = false
+    lastPos.value = null
     emit('maskUpdate', $canvas.value!.toDataURL())
 }
 

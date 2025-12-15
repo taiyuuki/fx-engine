@@ -38,7 +38,7 @@ fn vs_main(@location(0) p: vec3<f32>) -> VSOut {
 }
 
 @fragment
-fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
+fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     let speed = uniforms.speed;
     let scroll_speed = uniforms.scroll_speed;
     let angle = uniforms.angle;
@@ -46,7 +46,6 @@ fn fs_main(in: VSOut) -> @location(0) vec4<f32> {
     let strength = uniforms.strength;
     let scale = uniforms.scale;
 
-    let uv = in.uv;
     let time = uniforms.time;
 
     let coords_rotated = uv;

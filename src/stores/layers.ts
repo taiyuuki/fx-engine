@@ -6,6 +6,7 @@ import { defineStore } from 'pinia'
 import { createIrisMovementEffect } from 'src/effects/iris-movement'
 import pinia from 'stores/index'
 import { currentImage } from 'src/pages/side-bar/composibles'
+import { createWaterFlowEffect } from 'src/effects/water-flow'
 
 const pointer = usePointer(pinia)
 const samplerStore = useSamplerStore()
@@ -120,14 +121,15 @@ const useLayers = defineStore('layers', {
         },
 
         async getDefaultMaskTexture(colorValue: number) {
-            const materialName = `defaultMask-${colorValue}`
+            const materialName = `defaultMask-${colorValue.toString(16).toLocaleUpperCase()
+                .padStart(6, '0')}`
             if (!this.materials.has(materialName)) {
                 
                 const imageData = new ImageData(100, 100)
                 for (let i = 0; i < imageData.data.length; i += 4) {
-                    imageData.data[i] = colorValue
-                    imageData.data[i + 1] = colorValue
-                    imageData.data[i + 2] = colorValue
+                    imageData.data[i] = colorValue >> 16 & 0xFF
+                    imageData.data[i + 1] = colorValue >> 8 & 0xFF
+                    imageData.data[i + 2] = colorValue & 0xFF
                     imageData.data[i + 3] = 255
                 }
                 const cvs = document.createElement('canvas')
@@ -195,6 +197,27 @@ const useLayers = defineStore('layers', {
             await this.reRender()
         },
 
+        async addWaterFlowEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+            const maskTexture = await this.getDefaultMaskTexture(0x7F7F00)
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+            this.outputPass.push(prePassName)
+
+            const waterFlowEffect = await createWaterFlowEffect(`${imageLayer.crc}-effect-${c}__water-ripple`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                maskTexture: maskTexture,
+            })
+
+            imageLayer.effects.push(waterFlowEffect)
+            this.updateFrame.push(t => {
+                waterFlowEffect.uniforms.values[0] = t * 0.001
+                waterFlowEffect.uniforms.apply()
+            })
+
+            await this.reRender()
+        },
+
         async addIrisMovementEffect(imageLayer: ImageLayer) {
             if (!this.renderer) return
 
@@ -231,6 +254,9 @@ const useLayers = defineStore('layers', {
                     break
                 case 'iris-movement':
                     await this.addIrisMovementEffect(currentImage.value)
+                    break
+                case 'water-flow':
+                    await this.addWaterFlowEffect(currentImage.value)
                     break
             }
         },

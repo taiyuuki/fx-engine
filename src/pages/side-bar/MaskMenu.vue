@@ -2,7 +2,12 @@
 import { currentMask, maskInfo } from 'src/composibles/mask'
 import { currentEffect, currentImage, maskCanvasRef, maskControls, propBarDisplay } from './composibles'
 
-const props = defineProps<{ propName: string, bindingIndex: number, propertyIndex: number }>()
+const props = defineProps<{
+    propName: string,
+    bindingIndex: number,
+    propertyIndex: number,
+    flowMode?: boolean
+}>()
 const layers = useLayers()
 const showTextureDialog = ref(false)
 const selectedTexture = ref<string | null>(null)
@@ -13,7 +18,8 @@ function inputCurrentImage() {
     currentMask.value = material.value
     maskInfo.value.bindingIndex = props.bindingIndex
     maskInfo.value.propertyIndex = props.propertyIndex
-    maskInfo.value.refKey = 'alpha_mask'
+    maskInfo.value.refKey = props.flowMode ? 'flow_mask' : 'alpha_mask'
+    maskControls.value.flowMode = props.flowMode
     $inputEl.value?.click()
 }
 
@@ -26,7 +32,8 @@ function drawMask() {
     currentMask.value = material.value
     maskInfo.value.bindingIndex = props.bindingIndex
     maskInfo.value.propertyIndex = props.propertyIndex
-    maskInfo.value.refKey = 'alpha_mask'
+    maskInfo.value.refKey = props.flowMode ? 'flow_mask' : 'alpha_mask'
+    maskControls.value.flowMode = props.flowMode
     propBarDisplay.value = 'maskProps'
 
     nextTick(() => {

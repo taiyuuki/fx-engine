@@ -89,6 +89,7 @@ async function handleMaskUpdate(dataUrl: string) {
       :brush-amount="maskControls.brushAmount"
       :mask-opacity="maskControls.maskOpacity"
       :is-draw-mode="maskControls.isDrawMode"
+      :flow-mode="maskControls.flowMode"
       @mask-update="handleMaskUpdate"
     />
   </div>
