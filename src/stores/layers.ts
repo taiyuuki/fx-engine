@@ -261,20 +261,16 @@ const useLayers = defineStore('layers', {
             }
         },
 
-        // byPass(e: Effect, i: number) {
-        //     if (!this.renderer || !e.resources || !currentImage.value) return -1
-        //     const passIndex = this.outputPass.findIndex(o => o === e.name)
-        //     const pre = this.outputPass[passIndex - 1]
-        //     const nextEffect = currentImage.value?.effects[i + 1]
+        byPass(e: Effect, i: number) {
+            if (!this.renderer || !e.resources || !currentImage.value) return -1
+            const preName = currentImage.value?.effects[i - 1]?.name ?? baseLayerPassname(currentImage.value)
+            const nextEffect = currentImage.value?.effects[i + 1]
 
-        //     if (pre && nextEffect?.resources) {
-        //         nextEffect.setResource(0, this.renderer.getPassTexture(pre))
-            
-        //         this.renderer?.updateBindGroupSetResources(nextEffect.name, 'default', nextEffect.resources)    
-        //     }
+            if (preName && nextEffect?.resources) {
+                nextEffect.setResource(0, this.renderer.getPassTexture(preName))
+            }
 
-        //     return passIndex
-        // },
+        },
 
         // rePass(e: Effect, i: number) {
         //     if (!this.renderer || !e.resources || !currentImage.value) return
@@ -287,20 +283,8 @@ const useLayers = defineStore('layers', {
         //     }
         // },
 
-        async removeEffect(i: number) {
-
-            // let passIndex = -1
-            // if (this.renderer?.getPassByName(e.name)?.enabled) {
-            //     passIndex = this.byPass(e, i)
-            // }
-            // else {
-            //     passIndex = this.outputPass.findIndex(o => o === e.name)
-            // }
-            // if (passIndex >= 0) { 
-            //     this.outputPass.splice(passIndex, 1) 
-            // }
-
-            // this.renderer?.removePass(e.name)
+        async removeEffect(e: Effect, i: number) {
+            this.byPass(e, i)
             currentImage.value?.effects.splice(i, 1)
             await this.reRender()
         },

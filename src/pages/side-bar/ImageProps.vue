@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { Effect } from 'src/effects'
 import { currentEffect, currentImage, propBarDisplay, selectEffect } from './composibles'
 
 const effectsModal = ref(false)
@@ -20,11 +21,11 @@ function editEffect() {
     }
 }
 
-function removeEffect(i: number) {
+function removeEffect(e: Effect, i: number) {
     if (!currentImage.value) {
         return
     }
-    layers.removeEffect(i)
+    layers.removeEffect(e, i)
 }
 </script>
 
@@ -89,7 +90,7 @@ function removeEffect(i: number) {
           /> -->
           <div
             class="i-mdi:trash-can-outline w-5 h-5 text-gray-500 hover:text-inherit"
-            @click="removeEffect(i)"
+            @click="removeEffect(e, i)"
           />
         </div>
       </q-item>
