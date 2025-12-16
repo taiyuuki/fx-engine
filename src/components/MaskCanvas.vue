@@ -206,8 +206,8 @@ function draw(e: MouseEvent) {
         const cRight = hexToRgb(colorMap.right)
 
         const rr = Math.round(cUp.r * upW + cDown.r * downW + cLeft.r * leftW + cRight.r * rightW)
-        const gg = Math.round(cUp.g * upW + cDown.g * downW + cLeft.g * leftW + cRight.r * rightW)
-        const bb = Math.round(cUp.b * upW + cDown.b * downW + cLeft.b * leftW + cRight.r * rightW)
+        const gg = Math.round(cUp.g * upW + cDown.g * downW + cLeft.g * leftW + cRight.g * rightW)
+        const bb = Math.round(cUp.b * upW + cDown.b * downW + cLeft.b * leftW + cRight.b * rightW)
 
         const blendedSolid = `rgba(${rr}, ${gg}, ${bb}, ${alpha})`
         const blendedTransparent = `rgba(${rr}, ${gg}, ${bb}, 0)`
