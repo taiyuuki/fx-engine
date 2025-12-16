@@ -1,22 +1,54 @@
 <script setup lang="ts">
-import { currentImage, selectImage } from './composibles'
+import { canvasSettings, currentImage, selectImage } from './composibles'
 
 const $inputImage = useTemplateRef<HTMLInputElement>('inputImage')
 
 const layers = useLayers()
+const showCanvasDialog = ref(false)
+const tempCanvasWidth = ref(1280)
+const tempCanvasHeight = ref(720)
 
 async function addImageLayer(e: Event) {
     const file = (e.target as HTMLInputElement).files?.[0]
     if (file) {
-            
         layers.addImage(file)
     }
+}
+
+async function removeImageLayer(i: number) {
+    await layers.removeImage(i)
+}
+
+function showCreateCanvasDialog() {
+    showCanvasDialog.value = true
+}
+
+async function createCanvas() {
+    canvasSettings.value.width = tempCanvasWidth.value
+    canvasSettings.value.height = tempCanvasHeight.value
+    canvasSettings.value.initialized = true
+    showCanvasDialog.value = false
+
+    // 画布大小会在 PreviewPage 中通过 props 的 width 和 height 更新
+    // PreviewPage 会监听 canvasSettings 的变化并更新画布
+    console.log('Canvas created with size:', tempCanvasWidth.value, 'x', tempCanvasHeight.value)
 }
 </script>
 
 <template>
   <div class="p-1">
+    <!-- 创建画布或添加图片 -->
     <q-btn
+      v-if="!canvasSettings.initialized"
+      dense
+      flat
+      icon="aspect_ratio"
+      label="创建画布"
+      class="w-full bg-primary text-white"
+      @click="showCreateCanvasDialog"
+    />
+    <q-btn
+      v-else
       dense
       flat
       icon="add"
@@ -31,6 +63,7 @@ async function addImageLayer(e: Event) {
       class="hidden"
       accept="image/*"
       @change="addImageLayer"
+      :disabled="!canvasSettings.initialized"
     >
 
     <q-separator />
@@ -47,14 +80,118 @@ async function addImageLayer(e: Event) {
         @click="selectImage(image)"
       >
         <q-item-section side>
-          <div class="i-ic-image w-6 h-6" />
+          <div
+            class="i-ic:image w-6 h-6"
+            :class="{ 'text-white': currentImage?.name === image.name }"
+          />
         </q-item-section>
-        <q-item-section>
-          <q-item-label class="select-none">
-            {{ image.name }}
+        <q-item-section
+          no-wrap
+        >
+          <q-item-label class="select-none flex items-center justify-between">
+            <div class="flex-1 truncate">
+              {{ image.name }}
+            </div>
+            <div
+              class="i-mdi:trash-can-outline w-5 h-5 text-gray-500 hover:text-inherit"
+              @click="removeImageLayer(index)"
+            />
           </q-item-label>
         </q-item-section>
       </q-item>
     </q-list>
+
+    <!-- 创建画布对话框 -->
+    <q-dialog v-model="showCanvasDialog" persistent>
+      <q-card style="min-width: 400px">
+        <q-card-section>
+          <div class="text-h6">创建新画布</div>
+        </q-card-section>
+
+        <q-card-section>
+          <div class="space-y-4">
+            <!-- 预设尺寸 -->
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                预设尺寸
+              </label>
+              <div class="grid grid-cols-2 gap-2">
+                <q-btn
+                  flat
+                  outline
+                  label="720p"
+                  @click="tempCanvasWidth = 1280; tempCanvasHeight = 720"
+                />
+                <q-btn
+                  flat
+                  outline
+                  label="1080p"
+                  @click="tempCanvasWidth = 1920; tempCanvasHeight = 1080"
+                />
+                <q-btn
+                  flat
+                  outline
+                  label="2K"
+                  @click="tempCanvasWidth = 2560; tempCanvasHeight = 1440"
+                />
+                <q-btn
+                  flat
+                  outline
+                  label="4K"
+                  @click="tempCanvasWidth = 3840; tempCanvasHeight = 2160"
+                />
+              </div>
+            </div>
+
+            <!-- 自定义尺寸 -->
+            <div>
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                自定义尺寸
+              </label>
+              <div class="flex gap-2 items-center">
+                <q-input
+                  v-model.number="tempCanvasWidth"
+                  type="number"
+                  label="宽度"
+                  outlined
+                  dense
+                  :min="100"
+                  :max="7680"
+                  class="flex-1"
+                />
+                <span class="text-gray-500">×</span>
+                <q-input
+                  v-model.number="tempCanvasHeight"
+                  type="number"
+                  label="高度"
+                  outlined
+                  dense
+                  :min="100"
+                  :max="4320"
+                  class="flex-1"
+                />
+              </div>
+            </div>
+
+            <!-- 当前设置显示 -->
+            <div class="text-center p-2 bg-gray-100 dark:bg-gray-800 rounded">
+              <span class="text-sm text-gray-600 dark:text-gray-400">
+                画布尺寸: {{ tempCanvasWidth }} × {{ tempCanvasHeight }}
+              </span>
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions align="right">
+          <q-btn flat label="取消" @click="showCanvasDialog = false" />
+          <q-btn
+            color="primary"
+            label="创建"
+            :disable="tempCanvasWidth < 100 || tempCanvasHeight < 100"
+            @click="createCanvas"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
   </div>
 </template>

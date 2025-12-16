@@ -10,29 +10,33 @@ const props = defineProps<{
     maskOpacity?: number
     isDrawMode?: boolean
     flowMode?: boolean
+    scale?: number
 }>()
+
+const previewSize = computed(() => {
+    const diameter = brushSize.value * 2
+    const size = diameter * (props.scale || 1)
+
+    return size
+})
 
 const emit = defineEmits<{ maskUpdate: [dataUrl: string] }>()
 
 const $canvas = useTemplateRef<HTMLCanvasElement>('canvas')
 const ctx = ref<CanvasRenderingContext2D | null>(null)
-  
+
 const isDrawMode = ref(props.isDrawMode || false)
 const brushSize = ref(props.brushSize || 50)
 const brushHardness = ref(props.brushHardness || 0.8)
 const brushAmount = ref(props.brushAmount || 200)
 const maskOpacity = ref(props.maskOpacity || 0.5)
-
-// 新增 flowMode 支持和上次位置用于计算方向
 const flowMode = ref(props.flowMode || false)
 const lastPos = ref<{ x: number; y: number } | null>(null)
-
-// 平滑后的方向，用于减少绘制时方向抖动
 const lastDir = ref<{ x: number; y: number }>({ x: 0, y: 1 })
-
 const isDrawing = ref(false)
 const showMask = ref(false)
 const brushPreview = ref({ x: 0, y: 0, show: false })
+const displayScale = ref(1)
 
 watch(currentMask, () => {
     if (currentMask.value) {
@@ -46,9 +50,14 @@ watch(currentMask, () => {
     }
 })
 
-// 监听props变化
 watch(() => props.isDrawMode, val => {
     isDrawMode.value = val || false
+})
+
+watch(() => props.scale, () => {
+    nextTick(() => {
+        updateDisplayScale()
+    })
 })
 
 watch(() => props.brushSize, val => {
@@ -67,39 +76,60 @@ watch(() => props.maskOpacity, val => {
     if (val !== undefined) maskOpacity.value = val
 })
 
-// 监听 flowMode prop
 watch(() => props.flowMode, val => {
     flowMode.value = !!val
 })
 
+watch([() => props.width, () => props.height], ([newWidth, newHeight]) => {
+    if (newWidth && newHeight && $canvas.value) {
+        const imageData = ctx.value?.getImageData(0, 0, $canvas.value.width, $canvas.value.height)
+        $canvas.value.width = newWidth
+        $canvas.value.height = newHeight
+        if (imageData && imageData.width === newWidth && imageData.height === newHeight) {
+            ctx.value?.putImageData(imageData, 0, 0)
+        }
+        else {
+            clearCanvas(0)
+        }
+        updateDisplayScale()
+    }
+})
+
+function updateDisplayScale() {
+    if (props.scale !== undefined) {
+        displayScale.value = props.scale
+    }
+}
+
 function initCanvas() {
     if (!$canvas.value) return
     ctx.value = $canvas.value.getContext('2d')!
-    $canvas.value.width = props.width || 1280
-    $canvas.value.height = props.height || 720
+    const width = props.width || 1280
+    const height = props.height || 720
+    $canvas.value.width = width
+    $canvas.value.height = height
     clearCanvas(0)
 }
 
 function clearCanvas(c: number) {
-    if (!ctx.value) return
+    if (!ctx.value || !$canvas.value) return
     ctx.value.fillStyle = props.flowMode ? '#7F7F00' : `rgb(${c}, ${c}, ${c})`
-    ctx.value.fillRect(0, 0, $canvas.value!.width, $canvas.value!.height)
-    emit('maskUpdate', $canvas.value!.toDataURL())
+    ctx.value.fillRect(0, 0, $canvas.value.width, $canvas.value.height)
+    emit('maskUpdate', $canvas.value.toDataURL())
 }
 
 function startDrawing(e: MouseEvent) {
-    if (!isDrawMode.value) return
+    if (!isDrawMode.value || e.ctrlKey || e.metaKey) return
     isDrawing.value = true
-
-    // 初始化 lastPos
     const rect = $canvas.value!.getBoundingClientRect()
-    const x = (e.clientX - rect.left) * ($canvas.value!.width / rect.width)
-    const y = (e.clientY - rect.top) * ($canvas.value!.height / rect.height)
+    const scaleX = $canvas.value!.width / rect.width
+    const scaleY = $canvas.value!.height / rect.height
+    const x = (e.clientX - rect.left) * scaleX
+    const y = (e.clientY - rect.top) * scaleY
     lastPos.value = { x, y }
     draw(e)
 }
 
-// 返回不带 alpha 的 rgb 对象
 function hexToRgb(hex: string) {
     const h = hex.replace('#', '')
 
@@ -110,36 +140,29 @@ function hexToRgb(hex: string) {
     }
 }
 
-// 在两个 hex 颜色间按 t (0..1) 插值，并附带 alpha
-// ...existing code...
-
 function draw(e: MouseEvent) {
-    if (!isDrawing.value || !ctx.value || !$canvas.value) return
+    if (!isDrawing.value || !ctx.value || !$canvas.value || e.ctrlKey || e.metaKey) return
 
     const rect = $canvas.value.getBoundingClientRect()
-    const x = (e.clientX - rect.left) * ($canvas.value.width / rect.width)
-    const y = (e.clientY - rect.top) * ($canvas.value.height / rect.height)
+    const scaleX = $canvas.value.width / rect.width
+    const scaleY = $canvas.value.height / rect.height
+    const x = (e.clientX - rect.left) * scaleX
+    const y = (e.clientY - rect.top) * scaleY
 
     ctx.value.globalCompositeOperation = 'source-over'
 
     if (flowMode.value) {
-
-        // flow 模式
-        // 计算向量
         let dx = 0
-        let dy = 1 // 默认向下
+        let dy = 1
         if (lastPos.value) {
             dx = x - lastPos.value.x
             dy = y - lastPos.value.y
-
-            // 停留不动时保持默认
             if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
                 dx = 0
                 dy = 1
             }
         }
 
-        // 方向颜色映射
         const colorMap = {
             down: '7FFF00',
             up: '7F0000',
@@ -147,7 +170,6 @@ function draw(e: MouseEvent) {
             left: '007F00',
         } as const
 
-        // 四方向加权平均（up/down/left/right）
         const alpha = Math.max(0.02, Math.min(1, brushAmount.value / 255))
         const len = Math.hypot(dx, dy)
         let nx = 0
@@ -157,7 +179,6 @@ function draw(e: MouseEvent) {
             ny = dy / len
         }
 
-        // 指向平滑（指数移动平均）
         const smooth = 0.25
         lastDir.value.x = lastDir.value.x * (1 - smooth) + nx * smooth
         lastDir.value.y = lastDir.value.y * (1 - smooth) + ny * smooth
@@ -185,18 +206,24 @@ function draw(e: MouseEvent) {
         const cRight = hexToRgb(colorMap.right)
 
         const rr = Math.round(cUp.r * upW + cDown.r * downW + cLeft.r * leftW + cRight.r * rightW)
-        const gg = Math.round(cUp.g * upW + cDown.g * downW + cLeft.g * leftW + cRight.g * rightW)
-        const bb = Math.round(cUp.b * upW + cDown.b * downW + cLeft.b * leftW + cRight.b * rightW)
+        const gg = Math.round(cUp.g * upW + cDown.g * downW + cLeft.g * leftW + cRight.r * rightW)
+        const bb = Math.round(cUp.b * upW + cDown.b * downW + cLeft.b * leftW + cRight.r * rightW)
 
         const blendedSolid = `rgba(${rr}, ${gg}, ${bb}, ${alpha})`
         const blendedTransparent = `rgba(${rr}, ${gg}, ${bb}, 0)`
 
-        // 径向渐变
-        const featherStart = brushSize.value * (brushHardness.value * 0.8)
         const gradient = ctx.value.createRadialGradient(x, y, 0, x, y, brushSize.value)
-        gradient.addColorStop(0, blendedSolid)
-        gradient.addColorStop(featherStart / brushSize.value, blendedSolid)
-        gradient.addColorStop(1, blendedTransparent)
+
+        if (brushHardness.value >= 1) {
+            gradient.addColorStop(0, blendedSolid)
+            gradient.addColorStop(1, blendedSolid)
+        }
+        else {
+            const featherStart = brushSize.value * (brushHardness.value * 0.8)
+            gradient.addColorStop(0, blendedSolid)
+            gradient.addColorStop(featherStart / brushSize.value, blendedSolid)
+            gradient.addColorStop(1, blendedTransparent)
+        }
 
         ctx.value.fillStyle = gradient
         ctx.value.beginPath()
@@ -204,16 +231,19 @@ function draw(e: MouseEvent) {
         ctx.value.fill()
     }
     else {
-      
         const colorValue = Math.round(brushAmount.value)
-
         const gradient = ctx.value.createRadialGradient(x, y, 0, x, y, brushSize.value)
 
-        const featherStart = brushSize.value * (brushHardness.value * 0.8)
-
-        gradient.addColorStop(0, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 1)`)
-        gradient.addColorStop(featherStart / brushSize.value, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 1)`)
-        gradient.addColorStop(1, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 0)`)
+        if (brushHardness.value >= 1) {
+            gradient.addColorStop(0, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 1)`)
+            gradient.addColorStop(1, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 1)`)
+        }
+        else {
+            const featherStart = brushSize.value * (brushHardness.value * 0.8)
+            gradient.addColorStop(0, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 1)`)
+            gradient.addColorStop(featherStart / brushSize.value, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 1)`)
+            gradient.addColorStop(1, `rgba(${colorValue}, ${colorValue}, ${colorValue}, 0)`)
+        }
 
         ctx.value.fillStyle = gradient
         ctx.value.beginPath()
@@ -221,7 +251,6 @@ function draw(e: MouseEvent) {
         ctx.value.fill()
     }
 
-    // 更新 lastPos 以便下次计算方向
     lastPos.value = { x, y }
 }
 
@@ -238,7 +267,21 @@ function updateBrushPreview(e: MouseEvent) {
 
         return
     }
-    brushPreview.value = { x: e.clientX, y: e.clientY, show: true }
+
+    const rect = $canvas.value.getBoundingClientRect()
+
+    if (e.clientX < rect.left || e.clientX > rect.right
+        || e.clientY < rect.top || e.clientY > rect.bottom) {
+        brushPreview.value.show = false
+
+        return
+    }
+
+    brushPreview.value = {
+        x: e.clientX,
+        y: e.clientY,
+        show: true,
+    }
 }
 
 function hideBrushPreview() {
@@ -266,15 +309,38 @@ defineExpose({
 })
 
 onMounted(() => {
-    initCanvas()
+    window.addEventListener('resize', updateDisplayScale)
+    nextTick(() => {
+        initCanvas()
+        nextTick(() => {
+            updateDisplayScale()
+        })
+    })
+})
+
+function globalMouseMoveHandler(e: MouseEvent) {
+    if (isDrawMode.value) {
+        updateBrushPreview(e)
+    }
+}
+
+watch(isDrawMode, newValue => {
+    if (newValue) {
+        document.addEventListener('mousemove', globalMouseMoveHandler)
+    }
+    else {
+        document.removeEventListener('mousemove', globalMouseMoveHandler)
+        hideBrushPreview()
+    }
+})
+
+onUnmounted(() => {
+    document.removeEventListener('mousemove', globalMouseMoveHandler)
 })
 </script>
 
 <template>
-  <div
-    @mousemove="updateBrushPreview"
-    @mouseleave="hideBrushPreview"
-  >
+  <div>
     <canvas
       ref="canvas"
       class="mask-canvas absolute"
@@ -286,62 +352,50 @@ onMounted(() => {
       @mouseleave="stopDrawing"
     />
 
-    <!-- 画笔预览 -->
-    <div
-      v-if="brushPreview.show && isDrawMode"
-      class="brush-preview fixed rounded-full border-2 border-white pointer-events-none transform -translate-x-1/2 -translate-y-1/2 z-50"
-      :style="{
-        left: brushPreview.x + 'px',
-        top: brushPreview.y + 'px',
-        width: brushSize * 2 + 'px',
-        height: brushSize * 2 + 'px',
-        boxShadow: '0 0 0 1px rgba(0,0,0,0.5), inset 0 0 0 1px rgba(255,255,255,0.3)',
-      }"
-    />
-
-    <!-- 控制面板 -->
-    <div class="control-panel fixed top-4 right-4 bg-gray-900/90 backdrop-blur-sm p-4 rounded-lg shadow-lg border border-gray-700 w-72">
-      <h3 class="text-white text-sm font-semibold mb-3">
-        蒙版控制
-      </h3>
-
-      <div class="space-y-3">
-        <button
-          :class="[
-            'w-full py-2 px-3 rounded text-sm font-medium transition-all',
-            isDrawMode
-              ? 'bg-red-500 hover:bg-red-600 text-white'
-              : 'bg-green-500 hover:bg-green-600 text-white',
-          ]"
-          @click="toggleDrawMode"
-        >
-          {{ isDrawMode ? '退出绘制' : '开始绘制' }}
-        </button>
+    <Teleport to="body">
+      <div
+        v-if="brushPreview.show && isDrawMode"
+        class="fixed rounded-full pointer-events-none transform -translate-x-1/2 -translate-y-1/2"
+        style="z-index: 99999;"
+        :style="{
+          left: brushPreview.x + 'px',
+          top: brushPreview.y + 'px',
+          width: previewSize + 'px',
+          height: previewSize + 'px',
+          background: 'radial-gradient(circle, rgba(255,255,255,0.1) 0%, rgba(255,255,255,0.05) 40%, transparent 70%)',
+          border: '1px solid rgba(255,255,255,0.3)',
+          boxShadow: '0 0 20px rgba(0,0,0,0.3)',
+        }"
+      >
+        <div
+          class="absolute opacity-50"
+          :style="{
+            width: '1px',
+            height: '20px',
+            background: 'rgba(255,255,255,0.6)',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+          }"
+        />
+        <div
+          class="absolute opacity-50"
+          :style="{
+            width: '20px',
+            height: '1px',
+            background: 'rgba(255,255,255,0.6)',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+          }"
+        />
       </div>
-    </div>
+    </Teleport>
   </div>
 </template>
 
 <style scoped>
 .mask-canvas {
   pointer-events: none;
-}
-
-input[type="range"]::-webkit-slider-thumb {
-  appearance: none;
-  width: 12px;
-  height: 12px;
-  background: #3b82f6;
-  cursor: pointer;
-  border-radius: 50%;
-}
-
-input[type="range"]::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  background: #3b82f6;
-  cursor: pointer;
-  border-radius: 50%;
-  border: none;
 }
 </style>

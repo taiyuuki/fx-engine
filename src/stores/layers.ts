@@ -5,7 +5,7 @@ import type { RenderPassOptions, WGSLRenderer } from 'wgsl-renderer'
 import { defineStore } from 'pinia'
 import { createIrisMovementEffect } from 'src/effects/iris-movement'
 import pinia from 'stores/index'
-import { currentImage } from 'src/pages/side-bar/composibles'
+import { canvasSettings, currentImage } from 'src/pages/side-bar/composibles'
 import { createWaterFlowEffect } from 'src/effects/water-flow'
 
 const pointer = usePointer(pinia)
@@ -25,9 +25,18 @@ export interface ImageLayer {
     size: {
         width: number,
         height: number,
-    }
+    },
+    origin: {
+        x: number,
+        y: number,
+    },
+    scale: {
+        x: number,
+        y: number,
+    },
     passes: RenderPassOptions[],
     effects: Effect[],
+    uniformBuffer?: GPUBuffer,
 }
 
 const shaders: Record<string, string> = {}
@@ -55,7 +64,6 @@ const useLayers = defineStore('layers', {
             imageLayers: [] as ImageLayer[],
             materials: new Map<string, Material>(),
             updateFrame: [] as { (t: number): void }[],
-            outputPass: [] as string[],
         }
     },
     actions: {
@@ -91,10 +99,11 @@ const useLayers = defineStore('layers', {
         async addImage(file: File) {
             if (this.renderer) {
                 const baseShader = await createShader('base-layer')
-                const imageLayer: ImageLayer = await this.createImageLayer(file)
-                const sampler = samplerStore.getSampler('nearest', this.renderer as WGSLRenderer)
+                const imageLayer = await this.createImageLayer(file)
 
-                const { texture, width, height } = await this.renderer.loadImageTexture(file)
+                const sampler = samplerStore.getSampler('high-quality', this.renderer as WGSLRenderer)
+
+                const { texture, width, height } = await this.renderer.loadImageTexture(file, void 0, { resizeQuality: 'high' })
 
                 this.materials.set(`${imageLayer.crc}__meterial`, {
                     url: imageLayer.url,
@@ -106,18 +115,78 @@ const useLayers = defineStore('layers', {
                 imageLayer.size.width = width
                 imageLayer.size.height = height
 
+                // 创建 uniform buffer
+                const uniformBuffer = this.renderer.getDevice().createBuffer({
+                    size: 32, // canvas_res(8) + image_res(8) + origin(8) + scale(8) = 32 bytes
+                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
+                })
+
+                // 初始化 uniform 数据
+                const canvasWidth = canvasSettings.value.initialized ? canvasSettings.value.width : 1280
+                const canvasHeight = canvasSettings.value.initialized ? canvasSettings.value.height : 720
+                const canvasRes = new Float32Array([canvasWidth, canvasHeight])
+                const imageRes = new Float32Array([width, height])
+                const origin = new Float32Array([0, 0])
+                const scale = new Float32Array([1, 1])
+
+                this.renderer.getDevice().queue.writeBuffer(
+                    uniformBuffer,
+                    0,
+                    new Float32Array([
+                        ...canvasRes,
+                        ...imageRes,
+                        ...origin,
+                        ...scale,
+                    ]),
+                )
+
                 imageLayer.passes.push({
                     name: `${imageLayer.crc}__base-shader`,
                     shaderCode: baseShader,
                     resources: [
                         texture,
                         sampler,
+                        uniformBuffer,
                     ],
                 })
+
+                // 保存 uniform buffer 引用以便后续更新
+                imageLayer.uniformBuffer = uniformBuffer
                 this.imageLayers.push(imageLayer)
 
                 await this.reRender()
             }
+        },
+
+        updateImageTransform(imageLayer: ImageLayer) {
+            if (!imageLayer.uniformBuffer || !this.renderer) return
+
+            // 使用动态画布尺寸
+            const canvasWidth = canvasSettings.value.initialized ? canvasSettings.value.width : 1280
+            const canvasHeight = canvasSettings.value.initialized ? canvasSettings.value.height : 720
+            const canvasRes = new Float32Array([canvasWidth, canvasHeight])
+            const imageRes = new Float32Array([imageLayer.size.width, imageLayer.size.height])
+            const origin = new Float32Array([imageLayer.origin.x, imageLayer.origin.y])
+            const scale = new Float32Array([imageLayer.scale.x, imageLayer.scale.y])
+
+            this.renderer.getDevice().queue.writeBuffer(
+                imageLayer.uniformBuffer,
+                0,
+                new Float32Array([
+                    ...canvasRes,
+                    ...imageRes,
+                    ...origin,
+                    ...scale,
+                ]),
+            )
+        },
+
+        async removeImage(i: number) {
+            const imageLayer = this.imageLayers.splice(i, 1)[0]
+            if (imageLayer === currentImage.value) {
+                currentImage.value = null
+            }
+            await this.reRender()
         },
 
         async getDefaultMaskTexture(colorValue: number) {
@@ -170,6 +239,14 @@ const useLayers = defineStore('layers', {
                     width: 0,
                     height: 0,
                 },
+                origin: {
+                    x: 0,
+                    y: 0,
+                },
+                scale: {
+                    x: 1,
+                    y: 1,
+                },
                 passes: [],
                 effects: [],
             }
@@ -182,7 +259,7 @@ const useLayers = defineStore('layers', {
 
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
-            this.outputPass.push(prePassName)
+
             const waterRipplerEffect = await createWaterRippleEffect(`${imageLayer.crc}-effect-${c}__water-ripple`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
@@ -202,7 +279,6 @@ const useLayers = defineStore('layers', {
             const maskTexture = await this.getDefaultMaskTexture(0x7F7F00)
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
-            this.outputPass.push(prePassName)
 
             const waterFlowEffect = await createWaterFlowEffect(`${imageLayer.crc}-effect-${c}__water-ripple`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
@@ -225,7 +301,7 @@ const useLayers = defineStore('layers', {
 
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
-            this.outputPass.push(prePassName)
+
             const irisMovementEffect = await createIrisMovementEffect(`${imageLayer.crc}-effect-${c}__irir-movement`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
@@ -272,31 +348,11 @@ const useLayers = defineStore('layers', {
 
         },
 
-        // rePass(e: Effect, i: number) {
-        //     if (!this.renderer || !e.resources || !currentImage.value) return
-        //     const passIndex = this.outputPass.findIndex(o => o === e.name)
-        //     const cur = this.outputPass[passIndex]
-        //     const nextEffect = currentImage.value?.effects[i + 1]
-        //     if (cur && nextEffect?.resources) {
-        //         nextEffect.setResource(0, this.renderer.getPassTexture(cur))
-        //         this.renderer?.updateBindGroupSetResources(nextEffect.name, 'default', nextEffect.resources)
-        //     }
-        // },
-
         async removeEffect(e: Effect, i: number) {
             this.byPass(e, i)
             currentImage.value?.effects.splice(i, 1)
             await this.reRender()
         },
-
-        // switchEnable(e: Effect) {
-        //     if (e.enable) {
-        //         this.renderer?.enablePass(e.name)
-        //     }
-        //     else {
-        //         this.renderer?.disablePass(e.name)
-        //     } 
-        // },
     },
     getters: {
         passes(state) {

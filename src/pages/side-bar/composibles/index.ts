@@ -6,6 +6,13 @@ const propBarDisplay = ref<DisplayType>('imageProps')
 const currentImage = ref<ImageLayer | null>(null)
 const currentEffect = ref<Effect | null>(null)
 
+// 画布设置
+const canvasSettings = ref({
+    width: 1280,
+    height: 720,
+    initialized: false,
+})
+
 const maskControls = ref<{
     brushSize: number
     brushHardness: number
@@ -44,6 +51,7 @@ export {
     currentEffect,
     maskControls,
     maskCanvasRef,
+    canvasSettings,
     selectImage,
     selectEffect,
 }

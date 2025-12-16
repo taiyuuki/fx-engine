@@ -6,6 +6,37 @@ const effectsModal = ref(false)
 const active = ref<string | null>(null)
 const layers = useLayers()
 
+// 图片变换参数
+const imageTransform = reactive({
+    originX: 0,
+    originY: 0,
+    scaleX: 1,
+    scaleY: 1,
+})
+
+// 监听当前图片变化
+watch(currentImage, () => {
+    if (currentImage.value) {
+        imageTransform.originX = currentImage.value.origin.x
+        imageTransform.originY = currentImage.value.origin.y
+        imageTransform.scaleX = currentImage.value.scale.x
+        imageTransform.scaleY = currentImage.value.scale.y
+    }
+})
+
+// 监听变换参数变化
+watch([imageTransform], () => {
+    if (currentImage.value) {
+        currentImage.value.origin.x = imageTransform.originX
+        currentImage.value.origin.y = imageTransform.originY
+        currentImage.value.scale.x = imageTransform.scaleX
+        currentImage.value.scale.y = imageTransform.scaleY
+
+        // 更新 uniform buffer
+        layers.updateImageTransform(currentImage.value)
+    }
+}, { deep: true })
+
 async function addEffect() {
     if (!active.value) return
     await layers.addEffect(active.value)
@@ -64,7 +95,7 @@ function removeEffect(e: Effect, i: number) {
       bordered
       separator
       dense
-      class="p-1"
+      class="p-1 h-[150px] overflow-auto"
     >
       <q-item
         v-for="(e, i) in currentImage?.effects"
@@ -95,6 +126,159 @@ function removeEffect(e: Effect, i: number) {
         </div>
       </q-item>
     </q-list>
+
+    <!-- 图片变换控制 -->
+    <div
+      v-if="currentImage"
+      class="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-lg"
+    >
+      <h5 class="text-sm font-semibold mb-3 text-gray-700 dark:text-gray-300">
+        图片变换
+      </h5>
+
+      <div class="space-y-4">
+        <!-- X 原点 -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              X 原点
+            </label>
+            <q-input
+              v-model.number="imageTransform.originX"
+              type="number"
+              dense
+              outlined
+              style="width: 100px"
+              :min="-1920"
+              :max="1920"
+              @update:model-value="(v: string | number | null) => { imageTransform.originX = Number(v) || 0 }"
+            >
+              <template #append>
+                <span class="text-xs text-gray-500">px</span>
+              </template>
+            </q-input>
+          </div>
+          <q-slider
+            v-model="imageTransform.originX"
+            :min="-1920"
+            :max="1920"
+            :step="1"
+            class="flex-1"
+            @change="(v: number) => imageTransform.originX = v"
+          />
+        </div>
+
+        <!-- Y 原点 -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Y 原点
+            </label>
+            <q-input
+              v-model.number="imageTransform.originY"
+              type="number"
+              dense
+              outlined
+              style="width: 100px"
+              :min="-1080"
+              :max="1080"
+              @update:model-value="(v: string | number | null) => { imageTransform.originY = Number(v) || 0 }"
+            >
+              <template #append>
+                <span class="text-xs text-gray-500">px</span>
+              </template>
+            </q-input>
+          </div>
+          <q-slider
+            v-model="imageTransform.originY"
+            :min="-1080"
+            :max="1080"
+            :step="1"
+            class="flex-1"
+            @change="(v: number) => imageTransform.originY = v"
+          />
+        </div>
+
+        <!-- X 缩放 -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              X 缩放
+            </label>
+            <q-input
+              v-model.number="imageTransform.scaleX"
+              type="number"
+              dense
+              outlined
+              style="width: 100px"
+              :min="0.1"
+              :max="3"
+              :step="0.001"
+              @update:model-value="(v: string | number | null) => { imageTransform.scaleX = Number(v) || 0.1 }"
+            >
+              <template #append>
+                <span class="text-xs text-gray-500">x</span>
+              </template>
+            </q-input>
+          </div>
+          <q-slider
+            v-model="imageTransform.scaleX"
+            :min="0.1"
+            :max="3"
+            :step="0.001"
+            class="flex-1"
+            @change="(v: number) => imageTransform.scaleX = v"
+          />
+        </div>
+
+        <!-- Y 缩放 -->
+        <div class="space-y-2">
+          <div class="flex items-center justify-between">
+            <label class="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Y 缩放
+            </label>
+            <q-input
+              v-model.number="imageTransform.scaleY"
+              type="number"
+              dense
+              outlined
+              style="width: 100px"
+              :min="0.1"
+              :max="3"
+              step="0.01"
+              @update:model-value="(v: string | number | null) => { imageTransform.scaleY = Number(v) || 0.1 }"
+            >
+              <template #append>
+                <span class="text-xs text-gray-500">x</span>
+              </template>
+            </q-input>
+          </div>
+          <q-slider
+            v-model="imageTransform.scaleY"
+            :min="0.1"
+            :max="3"
+            :step="0.01"
+            class="flex-1"
+            @change="(v: number) => imageTransform.scaleY = v"
+          />
+        </div>
+
+        <!-- 重置按钮 -->
+        <q-btn
+          flat
+          size="sm"
+          label="重置变换"
+          color="primary"
+          class="w-full"
+          @click="() => {
+            imageTransform.originX = 0
+            imageTransform.originY = 0
+            imageTransform.scaleX = 1
+            imageTransform.scaleY = 1
+          }"
+        />
+      </div>
+    </div>
   </div>
   <q-dialog
     v-model="effectsModal"

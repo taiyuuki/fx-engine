@@ -19,7 +19,7 @@
     "quasar": "^2.16.0",
     "vue": "^3.5.22",
     "vue-router": "^4.0.12",
-    "wgsl-renderer": "^0.1.7"
+    "wgsl-renderer": "^0.1.8"
   },
   "devDependencies": {
     "@iconify/json": "^2.2.415",

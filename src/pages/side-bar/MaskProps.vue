@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { currentMask, maskInfo } from 'src/composibles/mask'
-import { DisplayType, maskCanvasRef, maskControls, propBarDisplay } from './composibles'
+import { DisplayType, canvasSettings, maskCanvasRef, maskControls, propBarDisplay } from './composibles'
 
 function clearMask() {
     maskCanvasRef.value?.clearMask()
@@ -10,6 +10,32 @@ function toggleDrawMode() {
     maskControls.value.isDrawMode = !maskControls.value.isDrawMode
     maskCanvasRef.value?.toggleDrawMode()
 }
+
+// 根据画布大小计算画笔大小的最大值
+const maxBrushSize = computed(() => {
+    if (!canvasSettings.value.initialized) {
+        return 100
+    }
+
+    // 基准：1280x720 的画布，画笔最大 100
+    const baseWidth = 1280
+    const baseHeight = 720
+    const baseMaxSize = 100
+
+    // 计算画布的对角线长度
+    const canvasDiagonal = Math.sqrt(canvasSettings.value.width ** 2
+        + canvasSettings.value.height ** 2)
+
+    // 计算基准画布的对角线长度
+    const baseDiagonal = Math.sqrt(baseWidth ** 2 + baseHeight ** 2)
+
+    // 根据对角线比例调整最大画笔大小
+    const scaleFactor = canvasDiagonal / baseDiagonal
+    const maxSize = Math.round(baseMaxSize * scaleFactor)
+
+    // 确保最小值不低于 50，最大值不超过 500
+    return Math.max(50, Math.min(500, maxSize))
+})
 
 function goBack(target: DisplayType) {
     if (maskControls.value.isDrawMode) {
@@ -21,6 +47,7 @@ function goBack(target: DisplayType) {
         bindingIndex: -1,
         propertyIndex: -1,
         refKey: null,
+        flowMode: false,
     }
 }
 </script>
@@ -84,13 +111,13 @@ function goBack(target: DisplayType) {
             画笔大小
           </label>
           <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-400">
-            {{ maskControls.brushSize }}px
+            {{ maskControls.brushSize }}
           </span>
         </div>
         <q-slider
           v-model="maskControls.brushSize"
           :min="1"
-          :max="100"
+          :max="maxBrushSize"
           class="flex-1"
           @change="(v: number) => maskControls.brushSize = v"
         />
