@@ -16,7 +16,7 @@ export async function createWaterFlowEffect(name: string, renderer: WGSLRenderer
     const wfUniforms = renderer.createUniforms(4)
     wfUniforms.values[0] = performance.now() // time
     wfUniforms.values[1] = 1.0 // speed [0.01, 2.0]
-    wfUniforms.values[2] = 1.0 // amp [0.01, 1.0]
+    wfUniforms.values[2] = 1.0 // amp [0.01, 2.0]
     wfUniforms.values[3] = 2.0 // scale [0.01, 10.0]
 
     if (!phaseTexture) {
@@ -45,7 +45,7 @@ export async function createWaterFlowEffect(name: string, renderer: WGSLRenderer
             label: '幅度',
             type: PropertyType.Float,
             defaultValue: 1.0,
-            range: [0.01, 1.0],
+            range: [0.01, 2.0],
             uniformIndex: [2, 1],
         }),
         createProperty({

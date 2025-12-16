@@ -28,10 +28,6 @@ async function createCanvas() {
     canvasSettings.value.height = tempCanvasHeight.value
     canvasSettings.value.initialized = true
     showCanvasDialog.value = false
-
-    // 画布大小会在 PreviewPage 中通过 props 的 width 和 height 更新
-    // PreviewPage 会监听 canvasSettings 的变化并更新画布
-    console.log('Canvas created with size:', tempCanvasWidth.value, 'x', tempCanvasHeight.value)
 }
 </script>
 
@@ -62,8 +58,8 @@ async function createCanvas() {
       name=""
       class="hidden"
       accept="image/*"
-      @change="addImageLayer"
       :disabled="!canvasSettings.initialized"
+      @change="addImageLayer"
     >
 
     <q-separator />
@@ -102,10 +98,15 @@ async function createCanvas() {
     </q-list>
 
     <!-- 创建画布对话框 -->
-    <q-dialog v-model="showCanvasDialog" persistent>
+    <q-dialog
+      v-model="showCanvasDialog"
+      persistent
+    >
       <q-card style="min-width: 400px">
         <q-card-section>
-          <div class="text-h6">创建新画布</div>
+          <div class="text-h6">
+            创建新画布
+          </div>
         </q-card-section>
 
         <q-card-section>
@@ -115,31 +116,71 @@ async function createCanvas() {
               <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
                 预设尺寸
               </label>
-              <div class="grid grid-cols-2 gap-2">
-                <q-btn
-                  flat
-                  outline
-                  label="720p"
-                  @click="tempCanvasWidth = 1280; tempCanvasHeight = 720"
-                />
-                <q-btn
-                  flat
-                  outline
-                  label="1080p"
-                  @click="tempCanvasWidth = 1920; tempCanvasHeight = 1080"
-                />
-                <q-btn
-                  flat
-                  outline
-                  label="2K"
-                  @click="tempCanvasWidth = 2560; tempCanvasHeight = 1440"
-                />
-                <q-btn
-                  flat
-                  outline
-                  label="4K"
-                  @click="tempCanvasWidth = 3840; tempCanvasHeight = 2160"
-                />
+
+              <!-- 横屏预设 -->
+              <div class="mb-3">
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  横屏
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <q-btn
+                    flat
+                    outline
+                    label="720p"
+                    @click="tempCanvasWidth = 1280; tempCanvasHeight = 720"
+                  />
+                  <q-btn
+                    flat
+                    outline
+                    label="1080p"
+                    @click="tempCanvasWidth = 1920; tempCanvasHeight = 1080"
+                  />
+                  <q-btn
+                    flat
+                    outline
+                    label="2K"
+                    @click="tempCanvasWidth = 2560; tempCanvasHeight = 1440"
+                  />
+                  <q-btn
+                    flat
+                    outline
+                    label="4K"
+                    @click="tempCanvasWidth = 3840; tempCanvasHeight = 2160"
+                  />
+                </div>
+              </div>
+
+              <!-- 竖屏预设 -->
+              <div>
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                  竖屏
+                </div>
+                <div class="grid grid-cols-2 gap-2">
+                  <q-btn
+                    flat
+                    outline
+                    label="720p 竖屏"
+                    @click="tempCanvasWidth = 720; tempCanvasHeight = 1280"
+                  />
+                  <q-btn
+                    flat
+                    outline
+                    label="1080p 竖屏"
+                    @click="tempCanvasWidth = 1080; tempCanvasHeight = 1920"
+                  />
+                  <q-btn
+                    flat
+                    outline
+                    label="2K 竖屏"
+                    @click="tempCanvasWidth = 1440; tempCanvasHeight = 2560"
+                  />
+                  <q-btn
+                    flat
+                    outline
+                    label="4K 竖屏"
+                    @click="tempCanvasWidth = 2160; tempCanvasHeight = 3840"
+                  />
+                </div>
               </div>
             </div>
 
@@ -183,7 +224,11 @@ async function createCanvas() {
         </q-card-section>
 
         <q-card-actions align="right">
-          <q-btn flat label="取消" @click="showCanvasDialog = false" />
+          <q-btn
+            flat
+            label="取消"
+            @click="showCanvasDialog = false"
+          />
           <q-btn
             color="primary"
             label="创建"

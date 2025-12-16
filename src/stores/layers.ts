@@ -103,7 +103,23 @@ const useLayers = defineStore('layers', {
 
                 const sampler = samplerStore.getSampler('high-quality', this.renderer as WGSLRenderer)
 
-                const { texture, width, height } = await this.renderer.loadImageTexture(file, void 0, { resizeQuality: 'high' })
+                const img = new Image()
+                img.src = URL.createObjectURL(file)
+
+                const { width, height } = await new Promise<{ width: number, height: number }>(r => {
+                    img.onload = () => {
+                        r({
+                            width: img.naturalWidth,
+                            height: img.naturalHeight,
+                        })
+                    }
+                })
+
+                const { texture } = await this.renderer.loadImageTexture(file, void 0, {
+                    resizeQuality: 'high',
+                    resizeWidth: width, 
+                    resizeHeight: height, 
+                })
 
                 this.materials.set(`${imageLayer.crc}__meterial`, {
                     url: imageLayer.url,
