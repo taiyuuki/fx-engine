@@ -46,6 +46,13 @@ async function addEffect() {
     effectsModal.value = false
 }
 
+// 效果列表
+const effectsList = [
+    { id: 'water-ripple', label: '水波纹' },
+    { id: 'iris-movement', label: '虹膜移动' },
+    { id: 'water-flow', label: '水流' },
+]
+
 function editEffect() {
     if (currentEffect) {
         propBarDisplay.value = 'effectProps'
@@ -282,70 +289,53 @@ function removeEffect(e: Effect, i: number) {
   </div>
   <q-dialog
     v-model="effectsModal"
+    transition-show="jump-down"
+    transition-hide="jump-up"
   >
-    <q-card>
-      <q-bar
-        class="bg-primary"
-        flat
-      >
-        <q-toolbar-title class="text-white m-2">
+    <q-card class="dialog-card">
+      <q-card-section class="dialog-header">
+        <div class="text-h6 text-white">
           添加图片效果
-        </q-toolbar-title>
+        </div>
         <q-btn
           v-close-popup
-          dense
           flat
+          round
+          dense
           icon="close"
-          color="white"
+          class="text-white"
         />
-      </q-bar>
-
-      <q-card-section>
-        <q-list
-          bordered
-          separator
-        >
-          <q-item
-            v-ripple
-            clickable
-            active-class="bg-primary text-white"
-            :active="active === 'water-ripple'"
-            @click="active = 'water-ripple'"
-          >
-            <q-item-section>水波纹</q-item-section>
-          </q-item>
-          <q-item
-            v-ripple
-            clickable
-            active-class="bg-primary text-white"
-            :active="active === 'iris-movement'"
-            @click="active = 'iris-movement'"
-          >
-            <q-item-section>虹膜移动</q-item-section>
-          </q-item>
-
-          <q-item
-            v-ripple
-            clickable
-            active-class="bg-primary text-white"
-            :active="active === 'water-flow'"
-            @click="active = 'water-flow'"
-          >
-            <q-item-section>水流</q-item-section>
-          </q-item>
-        </q-list>
       </q-card-section>
 
-      <q-card-actions align="right">
+      <q-card-section class="dialog-content q-pt-none">
+        <div class="q-gutter-sm">
+          <q-btn
+            v-for="effect in effectsList"
+            :key="effect.id"
+            :label="effect.label"
+            outline
+            color="grey-6"
+            text-color="grey-8"
+            class="effect-btn full-width"
+            :class="{ 'effect-btn-active': active === effect.id }"
+            @click="active = effect.id"
+          />
+        </div>
+      </q-card-section>
+
+      <q-card-actions class="dialog-actions">
         <q-btn
           v-close-popup
           flat
           label="取消"
+          class="action-btn"
         />
         <q-btn
-          flat
-          label="添加"
           color="primary"
+          label="添加"
+          unelevated
+          :disable="!active"
+          class="action-btn"
           @click="addEffect"
         />
       </q-card-actions>
@@ -354,4 +344,44 @@ function removeEffect(e: Effect, i: number) {
 </template>
 
 <style lang="scss">
+.dialog-card {
+  width: 400px;
+  max-width: 95vw;
+  border-radius: 2px;
+}
+
+.dialog-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 24px;
+  background-color: var(--q-primary);
+}
+
+.dialog-content {
+  padding: 20px 24px;
+}
+
+.dialog-actions {
+  padding: 12px 24px;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.effect-btn {
+  height: 48px;
+  border-radius: 4px;
+  background-color: white !important;
+}
+
+.effect-btn-active {
+  background-color: var(--q-primary) !important;
+  border-color: var(--q-primary) !important;
+  color: white !important;
+}
+
+.action-btn {
+  min-width: 64px;
+  border-radius: 2px;
+}
 </style>

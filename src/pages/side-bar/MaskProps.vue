@@ -38,9 +38,8 @@ const maxBrushSize = computed(() => {
 })
 
 function goBack(target: DisplayType) {
-    if (maskControls.value.isDrawMode) {
-        maskCanvasRef.value?.toggleDrawMode()
-    }
+    // 退出绘制模式
+    maskControls.value.isDrawMode = false
     propBarDisplay.value = target
     currentMask.value = null
     maskInfo.value = {
@@ -69,7 +68,7 @@ function goBack(target: DisplayType) {
 
       <q-breadcrumbs-el
         label="图层"
-        icon="home"
+        icon="layers"
         class="cursor-pointer select-none"
         @click="goBack('imageProps')"
       />
@@ -81,7 +80,7 @@ function goBack(target: DisplayType) {
       />
       <q-breadcrumbs-el
         label="绘制蒙版"
-        icon="widgets"
+        icon="draw"
         class="select-none"
       />
     </q-breadcrumbs>

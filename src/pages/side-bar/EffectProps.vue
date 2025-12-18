@@ -22,7 +22,7 @@ import MaskMenu from './MaskMenu.vue'
 
       <q-breadcrumbs-el
         label="图层"
-        icon="home"
+        icon="layers"
         class="cursor-pointer select-none"
         @click="propBarDisplay = 'imageProps'"
       />

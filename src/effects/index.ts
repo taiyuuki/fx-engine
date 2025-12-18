@@ -36,7 +36,7 @@ type Property<P extends PropertyType> = {
 
 type PropertyList<P extends PropertyType = PropertyType> = Property<P>[]
 
-type Uniforms = {
+export type Uniforms = {
     values: Float32Array;
     apply: { (): void };
     getBuffer: { (): GPUBuffer };

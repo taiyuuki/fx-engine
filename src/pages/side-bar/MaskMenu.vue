@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { currentMask, maskInfo } from 'src/composibles/mask'
-import { currentEffect, currentImage, maskCanvasRef, maskControls, propBarDisplay } from './composibles'
+import { currentEffect, maskCanvasRef, maskControls, propBarDisplay } from './composibles'
 
 const props = defineProps<{
     propName: string,
@@ -56,7 +56,7 @@ async function resolveCurrentImage(e: Event) {
             }
 
             currentEffect.value.setResource(maskInfo.value.bindingIndex, texture)
-            const maskName = `${currentImage.value!.crc}.${currentEffect.value.name}__mask`
+            const maskName = `${currentEffect.value.name}__mask`
             layers.materials.set(maskName, currentMask.value)
             currentEffect.value.refs[maskInfo.value.refKey!] = maskName
             layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
@@ -83,7 +83,7 @@ function confirmTextureSelection() {
 
             currentMask.value = textureData
             currentEffect.value.setResource(maskInfo.value.bindingIndex, textureData.texture)
-            const maskName = `${currentImage.value!.crc}.${currentEffect.value.name}__mask`
+            const maskName = `${currentEffect.value.name}__mask`
             layers.materials.set(maskName, textureData)
             currentEffect.value.refs[maskInfo.value.refKey!] = maskName
             layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)

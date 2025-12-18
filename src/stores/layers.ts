@@ -1,4 +1,4 @@
-import type { Effect } from 'src/effects'
+import type { Effect, Uniforms } from 'src/effects'
 import { createWaterRippleEffect } from 'src/effects/water-ripple'
 import { crc32 } from 'src/utils/crc'
 import type { RenderPassOptions, WGSLRenderer } from 'wgsl-renderer'
@@ -36,7 +36,7 @@ export interface ImageLayer {
     },
     passes: RenderPassOptions[],
     effects: Effect[],
-    uniformBuffer?: GPUBuffer,
+    uniforms?: Uniforms,
 }
 
 const shaders: Record<string, string> = {}
@@ -103,23 +103,7 @@ const useLayers = defineStore('layers', {
 
                 const sampler = samplerStore.getSampler('high-quality', this.renderer as WGSLRenderer)
 
-                const img = new Image()
-                img.src = URL.createObjectURL(file)
-
-                const { width, height } = await new Promise<{ width: number, height: number }>(r => {
-                    img.onload = () => {
-                        r({
-                            width: img.naturalWidth,
-                            height: img.naturalHeight,
-                        })
-                    }
-                })
-
-                const { texture } = await this.renderer.loadImageTexture(file, void 0, {
-                    resizeQuality: 'high',
-                    resizeWidth: width, 
-                    resizeHeight: height, 
-                })
+                const { texture, width, height } = await this.renderer.loadImageTexture(file)
 
                 this.materials.set(`${imageLayer.crc}__meterial`, {
                     url: imageLayer.url,
@@ -131,30 +115,29 @@ const useLayers = defineStore('layers', {
                 imageLayer.size.width = width
                 imageLayer.size.height = height
 
-                // 创建 uniform buffer
-                const uniformBuffer = this.renderer.getDevice().createBuffer({
-                    size: 32, // canvas_res(8) + image_res(8) + origin(8) + scale(8) = 32 bytes
-                    usage: GPUBufferUsage.UNIFORM | GPUBufferUsage.COPY_DST,
-                })
+                const imgUniforms = this.renderer.createUniforms(8)
 
-                // 初始化 uniform 数据
                 const canvasWidth = canvasSettings.value.initialized ? canvasSettings.value.width : 1280
                 const canvasHeight = canvasSettings.value.initialized ? canvasSettings.value.height : 720
-                const canvasRes = new Float32Array([canvasWidth, canvasHeight])
-                const imageRes = new Float32Array([width, height])
-                const origin = new Float32Array([0, 0])
-                const scale = new Float32Array([1, 1])
 
-                this.renderer.getDevice().queue.writeBuffer(
-                    uniformBuffer,
-                    0,
-                    new Float32Array([
-                        ...canvasRes,
-                        ...imageRes,
-                        ...origin,
-                        ...scale,
-                    ]),
-                )
+                imgUniforms.values.set([
+                    canvasWidth, canvasHeight,
+                    width, height,
+                    0, 0,
+                    1, 1,
+                ])
+                imgUniforms.apply()
+
+                // this.renderer.getDevice().queue.writeBuffer(
+                //     uniformBuffer,
+                //     0,
+                //     new Float32Array([
+                //         ...canvasRes,
+                //         ...imageRes,
+                //         ...origin,
+                //         ...scale,
+                //     ]),
+                // )
 
                 imageLayer.passes.push({
                     name: `${imageLayer.crc}__base-shader`,
@@ -162,39 +145,34 @@ const useLayers = defineStore('layers', {
                     resources: [
                         texture,
                         sampler,
-                        uniformBuffer,
+                        imgUniforms.getBuffer(),
                     ],
                 })
 
                 // 保存 uniform buffer 引用以便后续更新
-                imageLayer.uniformBuffer = uniformBuffer
+                imageLayer.uniforms = imgUniforms
                 this.imageLayers.push(imageLayer)
+                currentImage.value = imageLayer
 
                 await this.reRender()
             }
         },
 
         updateImageTransform(imageLayer: ImageLayer) {
-            if (!imageLayer.uniformBuffer || !this.renderer) return
+            if (!imageLayer.uniforms || !this.renderer) return
 
             // 使用动态画布尺寸
             const canvasWidth = canvasSettings.value.initialized ? canvasSettings.value.width : 1280
             const canvasHeight = canvasSettings.value.initialized ? canvasSettings.value.height : 720
-            const canvasRes = new Float32Array([canvasWidth, canvasHeight])
-            const imageRes = new Float32Array([imageLayer.size.width, imageLayer.size.height])
-            const origin = new Float32Array([imageLayer.origin.x, imageLayer.origin.y])
-            const scale = new Float32Array([imageLayer.scale.x, imageLayer.scale.y])
 
-            this.renderer.getDevice().queue.writeBuffer(
-                imageLayer.uniformBuffer,
-                0,
-                new Float32Array([
-                    ...canvasRes,
-                    ...imageRes,
-                    ...origin,
-                    ...scale,
-                ]),
-            )
+            imageLayer.uniforms.values.set([
+                canvasWidth, canvasHeight,
+                imageLayer.size.width, imageLayer.size.height,
+                imageLayer.origin.x, imageLayer.origin.y,
+                imageLayer.scale.x, imageLayer.scale.y,
+            ])
+
+            imageLayer.uniforms.apply()
         },
 
         async removeImage(i: number) {
