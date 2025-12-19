@@ -77,7 +77,7 @@ const useLayers = defineStore('layers', {
                 this.renderer?.addPass({
                     blendMode: 'alpha',
                     renderToCanvas: ec === 0,
-                    clearColor: { r: 1, g: 1, b: 1, a: 1 },
+                    clearColor: { r: 1, g: 1, b: 1, a: 0 },
                     ...layer.passes[0]!,
                 })
 
@@ -130,17 +130,6 @@ const useLayers = defineStore('layers', {
                 ])
                 imgUniforms.apply()
 
-                // this.renderer.getDevice().queue.writeBuffer(
-                //     uniformBuffer,
-                //     0,
-                //     new Float32Array([
-                //         ...canvasRes,
-                //         ...imageRes,
-                //         ...origin,
-                //         ...scale,
-                //     ]),
-                // )
-
                 imageLayer.passes.push({
                     name: `${imageLayer.crc}__base-shader`,
                     shaderCode: baseShader,
@@ -151,7 +140,6 @@ const useLayers = defineStore('layers', {
                     ],
                 })
 
-                // 保存 uniform buffer 引用以便后续更新
                 imageLayer.uniforms = imgUniforms
                 this.imageLayers.push(imageLayer)
                 currentImage.value = imageLayer
@@ -320,7 +308,7 @@ const useLayers = defineStore('layers', {
 
         async addEffect(effectName: string) {
             if (!currentImage.value) return
-            const image = currentImage.value // 非空断言
+            const image = currentImage.value
             switch (effectName) {
                 case 'water-ripple':
                     await this.addWaterRippleEffect(image)

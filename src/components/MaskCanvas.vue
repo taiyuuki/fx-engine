@@ -147,7 +147,10 @@ function clearCanvas(c: number) {
 }
 
 function startDrawing(e: MouseEvent) {
-    if (!isDrawMode.value || e.ctrlKey || e.metaKey) return
+    // 确保事件对象存在并且是左键点击
+    if (!isDrawMode.value || e.button !== 0 || e.ctrlKey || e.metaKey) return
+
+    // 强制重置绘制状态，避免状态不一致
     isDrawing.value = true
 
     // 先绘制第一个点，不设置lastPos
@@ -171,7 +174,16 @@ function hexToRgb(hex: string) {
 }
 
 function draw(e: MouseEvent) {
-    if (!isDrawing.value || !ctx.value || !$canvas.value || e.ctrlKey || e.metaKey) return
+    if (!ctx.value || !$canvas.value || !isDrawMode.value) return
+
+    // 确保是左键在绘制状态
+    if (!isDrawing.value || e.button !== 0 || e.ctrlKey || e.metaKey) {
+        // 如果不在绘制状态但有拖动，可能是状态不一致，重置状态
+        if (isDrawing.value && (e.button !== 0 || e.ctrlKey || e.metaKey)) {
+            stopDrawing()
+        }
+        return
+    }
 
     const rect = $canvas.value.getBoundingClientRect()
 
@@ -348,10 +360,16 @@ function draw(e: MouseEvent) {
 }
 
 function stopDrawing() {
-    if (!isDrawing.value) return
-    isDrawing.value = false
+    // 强制重置所有绘制相关的状态，确保没有残留状态
+    if (isDrawing.value) {
+        isDrawing.value = false
+    }
     lastPos.value = null
-    emit('maskUpdate', $canvas.value!.toDataURL())
+
+    // 如果有有效的画布，发送更新
+    if ($canvas.value && ctx.value) {
+        emit('maskUpdate', $canvas.value!.toDataURL())
+    }
 }
 
 function updateBrushPreview(e: MouseEvent) {
@@ -464,6 +482,7 @@ onUnmounted(() => {
       @mousemove="draw"
       @mouseup="stopDrawing"
       @mouseleave="stopDrawing"
+      @contextmenu.prevent="stopDrawing"
     />
 
     <div

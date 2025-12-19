@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { createWGSLRenderer } from 'wgsl-renderer'
 import MaskCanvas from 'src/components/MaskCanvas.vue'
-import { canvasSettings, currentEffect, currentImage, maskControls, propBarDisplay } from 'src/pages/side-bar/composibles'
+import { canvasSettings, currentEffect, currentImage, maskCanvasRef, maskControls, propBarDisplay } from 'src/pages/side-bar/composibles'
 import { currentMask, maskInfo } from 'src/composibles/mask'
 import { vZoom } from 'src/directives/v-zoom'
 
@@ -18,7 +18,6 @@ const pageStyle = computed(() => {
 const showCanvasDialog = ref(false)
 const tempCanvasWidth = ref(1280)
 const tempCanvasHeight = ref(720)
-const maskCanvasRef = ref<any>(null)
 
 function showCreateCanvasDialog() {
     showCanvasDialog.value = true
@@ -48,22 +47,11 @@ const canvasTransform = reactive({
 })
 
 // 控制面板显示状态
-const controlPanelVisible = ref(false)
-let controlPanelHideTimer: number | null = null
+const controlPanelVisible = ref(true)
 
 // 显示控制面板
 function showControlPanel() {
     controlPanelVisible.value = true
-    if (controlPanelHideTimer) {
-        window.clearTimeout(controlPanelHideTimer)
-    }
-}
-
-// 隐藏控制面板（延迟）
-function hideControlPanel() {
-    controlPanelHideTimer = window.setTimeout(() => {
-        controlPanelVisible.value = false
-    }, 2000) // 2秒后自动隐藏
 }
 
 // 放大画布
@@ -452,7 +440,6 @@ onMounted(() => {
       @mousemove="drag"
       @mouseup="endDrag"
       @mouseleave="endDrag"
-      @mouseenter="showControlPanel"
     >
       <!-- 渲染画布背景 -->
       <div
@@ -616,15 +603,9 @@ onMounted(() => {
 
       <!-- 控制面板 -->
       <div
-        v-if="canvasSettings.initialized"
+        v-if="canvasSettings.initialized && controlPanelVisible"
         class="absolute bottom-4 left-4 bg-black/80 text-white transition-all duration-300 rounded-lg shadow-lg"
-        :class="{
-          'opacity-100 translate-y-0': controlPanelVisible,
-          'opacity-0 translate-y-2 pointer-events-none': !controlPanelVisible,
-        }"
         style="z-index: 2000;"
-        @mouseenter="showControlPanel"
-        @mouseleave="hideControlPanel"
       >
         <!-- 顶部信息 -->
         <div class="px-4 pt-3 pb-2 border-b border-gray-600/30">
