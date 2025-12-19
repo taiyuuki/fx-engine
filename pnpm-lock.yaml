@@ -39,6 +39,9 @@ importers:
       '@types/node':
         specifier: ^20.5.9
         version: 20.19.25
+      '@unocss/preset-wind4':
+        specifier: ^66.5.10
+        version: 66.5.10
       '@webgpu/types':
         specifier: ^0.1.67
         version: 0.1.67

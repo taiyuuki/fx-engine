@@ -2,6 +2,7 @@ import type { Effect } from 'src/effects'
 import type { ImageLayer } from 'src/stores/layers'
 
 type DisplayType = 'effectProps' | 'imageProps' | 'maskProps'
+
 const propBarDisplay = ref<DisplayType>('imageProps')
 const currentImage = ref<ImageLayer | null>(null)
 const currentEffect = ref<Effect | null>(null)

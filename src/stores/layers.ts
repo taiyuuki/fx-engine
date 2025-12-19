@@ -77,6 +77,7 @@ const useLayers = defineStore('layers', {
                 this.renderer?.addPass({
                     blendMode: 'alpha',
                     renderToCanvas: ec === 0,
+                    clearColor: { r: 1, g: 1, b: 1, a: 1 },
                     ...layer.passes[0]!,
                 })
 
@@ -86,6 +87,7 @@ const useLayers = defineStore('layers', {
                     this.renderer?.addPass({
                         blendMode: last ? 'alpha' : 'none',
                         renderToCanvas: last, 
+                        clearColor: { r: 1, g: 1, b: 1, a: 0 },
                         ...options,
                     })
                 })
@@ -318,22 +320,23 @@ const useLayers = defineStore('layers', {
 
         async addEffect(effectName: string) {
             if (!currentImage.value) return
+            const image = currentImage.value // 非空断言
             switch (effectName) {
                 case 'water-ripple':
-                    await this.addWaterRippleEffect(currentImage.value)
+                    await this.addWaterRippleEffect(image)
                     break
                 case 'iris-movement':
-                    await this.addIrisMovementEffect(currentImage.value)
+                    await this.addIrisMovementEffect(image)
                     break
                 case 'water-flow':
-                    await this.addWaterFlowEffect(currentImage.value)
+                    await this.addWaterFlowEffect(image)
                     break
             }
         },
 
         byPass(e: Effect, i: number) {
             if (!this.renderer || !e.resources || !currentImage.value) return -1
-            const preName = currentImage.value?.effects[i - 1]?.name ?? baseLayerPassname(currentImage.value)
+            const preName = currentImage.value.effects[i - 1]?.name ?? baseLayerPassname(currentImage.value)
             const nextEffect = currentImage.value?.effects[i + 1]
 
             if (preName && nextEffect?.resources) {
