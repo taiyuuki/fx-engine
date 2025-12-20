@@ -1,4 +1,4 @@
-import type { BindingResource, RenderPassOptions } from 'wgsl-renderer'
+import type { BindingResource } from 'wgsl-renderer'
 
 enum PropertyType {
     Float = 'float',
@@ -29,7 +29,7 @@ type Property<P extends PropertyType> = {
     label: string
     type: P
     defaultValue: PropertyValue<P>
-    uniformIndex: [number, number] // [offset, size]
+    uniformIndex: [number, number] | [string, number, number] // [offset, size] 或 [passName, offset, size] for multi-pass
     range: [number, number]
     condition: boolean | ({ (): boolean })
 } 
@@ -42,13 +42,30 @@ export type Uniforms = {
     getBuffer: { (): GPUBuffer };
 }
 
+interface MaskConfig {
+    passName: string; // 蒙版所在的pass名称
+    bindingIndex: number; // 蒙版在pass中的binding索引
+}
+
 interface EffectOptions {
     name: string;
     label: string;
     properties: PropertyList;
     uniforms: Uniforms;
-    shaderCode: string;
+    shaderCode?: string; // 单个效果的shader代码
+    passes?: EffectPassOptions[]; // 多个pass的配置
     resources?: BindingResource[]
+    passUniforms?: Record<string, Uniforms>; // 多pass效果的uniform buffers
+    maskConfigs?: Record<string, MaskConfig>; // 支持多个蒙版配置，key为蒙版属性名
+}
+
+interface EffectPassOptions {
+    name: string
+    shaderCode: string
+    resources?: BindingResource[]
+    view?: GPUTextureView
+    format?: GPUTextureFormat
+    condition?: boolean | { (): boolean }
 }
 
 type Optional<O extends object, K extends keyof O> = Omit<O, K> & Partial<Pick<O, K>>
@@ -65,9 +82,13 @@ class Effect {
     properties: PropertyList
     enable: boolean = true
     uniforms: Uniforms
-    shaderCode: string
+    shaderCode?: string
+    passes?: EffectPassOptions[]
     resources: BindingResource[] | undefined
     refs: Record<string, PropertyValue<keyof PropertyValueMap>>
+    isMultiPass: boolean
+    passUniforms: Record<string, Uniforms> // 存储每个pass的uniform buffers
+    maskConfigs?: Record<string, MaskConfig> // 支持多个蒙版配置，key为蒙版属性名
 
     constructor(options: EffectOptions) {
         this.name = options.name
@@ -75,7 +96,11 @@ class Effect {
         this.properties = options.properties
         this.uniforms = options.uniforms
         this.shaderCode = options.shaderCode
+        this.passes = options.passes
         this.resources = options.resources
+        this.isMultiPass = !!options.passes && options.passes.length > 0
+        this.passUniforms = options.passUniforms || {}
+        this.maskConfigs = options.maskConfigs
 
         this.refs = {}
 
@@ -87,34 +112,101 @@ class Effect {
 
     applyUniforms(name: string) {
         const p = this.properties.find(p => p.name === name)
+        if (!p) return
+
+        const uniformIndex = p.uniformIndex
+        let targetUniforms: Uniforms
+        let offset: number
+
+        if (uniformIndex.length === 3) {
+
+            // 多pass格式: [passName, offset, size]
+            const [passName, passOffset] = uniformIndex as [string, number, number]
+            const foundUniforms = this.passUniforms[passName]
+            if (!foundUniforms) {
+                console.warn(`Pass "${passName}" uniform buffer not found for property "${name}"`)
+
+                return
+            }
+            targetUniforms = foundUniforms
+            offset = passOffset
+        }
+        else {
+
+            // 单pass格式: [offset, size]
+            targetUniforms = this.uniforms
+            offset = (uniformIndex as [number, number])[0]
+        }
+
         switch (p?.type) {
             case PropertyType.Float:
-                this.uniforms.values[p.uniformIndex[0]] = this.refs[name] as number
+                targetUniforms.values[offset] = this.refs[name] as number
                 break
             case PropertyType.Checkbox:
-                this.uniforms.values[p.uniformIndex[0]] = this.refs[name] ? 1.0 : 0.0
+                targetUniforms.values[offset] = this.refs[name] ? 1.0 : 0.0
                 break
+            default:
+                return
         }
-        this.uniforms.apply()
+        targetUniforms.apply()
     }
 
     setResources(resources: BindingResource[]) {
         this.resources = resources
     }
 
-    setResource(index: number, resource: BindingResource) {
-        if (this.resources) {
+    setResource(index: number, resource: BindingResource, passName?: string) {
+        if (passName) {
+            const pass = this.passes?.find(p => p.name === passName)
+            if (pass?.resources) {
+                pass.resources[index] = resource
+            }
+        }
+        else if (this.resources) {
             this.resources[index] = resource
         }
     }
 
-    getPassOptions(): RenderPassOptions {
-        return {
-            name: this.name,
-            shaderCode: this.shaderCode,
-            resources: this.resources || [],
-            bindGroupSets: { default: this.resources || [] },
+    // 获取所有可用的passes
+    getPassOptionsList(): EffectPassOptions[] {
+        if (!this.isMultiPass || !this.passes) {
+
+            // 单个pass模式
+            if (this.shaderCode) {
+                return [{
+                    name: this.name,
+                    shaderCode: this.shaderCode,
+                    resources: this.resources || [],
+                }]
+            }
+
+            return []
         }
+
+        // 多个pass模式，只返回满足条件的pass
+        return this.passes
+    }
+
+    // 检查是否有指定的pass
+    hasPass(passName: string): boolean {
+        if (!this.isMultiPass || !this.passes) return false
+        const pass = this.passes.find(p => p.name === passName)
+        if (!pass) return false
+
+        // 检查条件
+        if (typeof pass.condition === 'boolean') {
+            return pass.condition
+        }
+        if (typeof pass.condition === 'function') {
+            return pass.condition()
+        }
+
+        return true
+    }
+
+    // 获取指定蒙版属性名的配置
+    getMaskConfig(maskPropertyName: string): MaskConfig | undefined {
+        return this.maskConfigs?.[maskPropertyName]
     }
 }
 
@@ -126,5 +218,6 @@ export {
 
 export type {
     PropertyValue,
-    Property, PropertyList, 
+    Property, PropertyList,
+    EffectPassOptions,
 }

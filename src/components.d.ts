@@ -11,12 +11,8 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
-    EssentialLink: typeof import('./components/EssentialLink.vue')['default']
-    ExampleComponent: typeof import('./components/ExampleComponent.vue')['default']
     MaskCanvas: typeof import('./components/MaskCanvas.vue')['default']
-    MaskEditor: typeof import('./components/MaskEditor.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
-    WaterRipple: typeof import('./components/WaterRipple.vue')['default']
   }
 }

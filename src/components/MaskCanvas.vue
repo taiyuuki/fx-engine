@@ -147,6 +147,7 @@ function clearCanvas(c: number) {
 }
 
 function startDrawing(e: MouseEvent) {
+
     // 确保事件对象存在并且是左键点击
     if (!isDrawMode.value || e.button !== 0 || e.ctrlKey || e.metaKey) return
 
@@ -178,10 +179,12 @@ function draw(e: MouseEvent) {
 
     // 确保是左键在绘制状态
     if (!isDrawing.value || e.button !== 0 || e.ctrlKey || e.metaKey) {
+
         // 如果不在绘制状态但有拖动，可能是状态不一致，重置状态
         if (isDrawing.value && (e.button !== 0 || e.ctrlKey || e.metaKey)) {
             stopDrawing()
         }
+
         return
     }
 
@@ -193,8 +196,6 @@ function draw(e: MouseEvent) {
 
     // 对于蒙版绘制，使用更合适的混合模式以保持渐变效果
     ctx.value.globalCompositeOperation = 'source-over'
-
-    // 但对于软边画笔，我们需要特殊的处理
 
     if (flowMode.value) {
         let dx = 0
@@ -360,15 +361,15 @@ function draw(e: MouseEvent) {
 }
 
 function stopDrawing() {
-    // 强制重置所有绘制相关的状态，确保没有残留状态
+
     if (isDrawing.value) {
         isDrawing.value = false
-    }
-    lastPos.value = null
+        lastPos.value = null
 
-    // 如果有有效的画布，发送更新
-    if ($canvas.value && ctx.value) {
-        emit('maskUpdate', $canvas.value!.toDataURL())
+        // 如果有有效的画布，发送更新
+        if ($canvas.value && ctx.value) {
+            emit('maskUpdate', $canvas.value!.toDataURL())
+        }
     }
 }
 

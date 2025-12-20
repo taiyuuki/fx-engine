@@ -1,5 +1,6 @@
 import type { Effect, Uniforms } from 'src/effects'
 import { createWaterRippleEffect } from 'src/effects/water-ripple'
+import { createCursorRippleEffect } from 'src/effects/cursor-ripple'
 import { crc32 } from 'src/utils/crc'
 import type { RenderPassOptions, WGSLRenderer } from 'wgsl-renderer'
 import { defineStore } from 'pinia'
@@ -71,25 +72,38 @@ const useLayers = defineStore('layers', {
         async reRender() {
             if (!this.renderer) return
             this.renderer.reset()
-            this.imageLayers.forEach(layer => {
-                const ec = layer.effects.length
 
+            this.imageLayers.forEach(layer => {
+
+                // 先添加基础pass（图像层）
                 this.renderer?.addPass({
                     blendMode: 'alpha',
-                    renderToCanvas: ec === 0,
+                    renderToCanvas: layer.effects.length === 0,
                     clearColor: { r: 1, g: 1, b: 1, a: 0 },
                     ...layer.passes[0]!,
                 })
 
+                // 添加效果passes
                 layer.effects.forEach((fx, i) => {
-                    const options = fx.getPassOptions()
-                    const last = i === ec - 1
-                    this.renderer?.addPass({
-                        blendMode: last ? 'alpha' : 'none',
-                        renderToCanvas: last, 
-                        clearColor: { r: 1, g: 1, b: 1, a: 0 },
-                        ...options,
+
+                    const passoptionsList = fx.getPassOptionsList()
+                    
+                    passoptionsList.forEach((passOptions, passIndex) => {
+
+                        // 判断是否是最后一个效果，且是否最后一个pass
+                        const isLastEffect = i === layer.effects.length - 1
+                        const isLastPassInEffect = passIndex === passoptionsList.length - 1
+
+                        this.renderer?.addPass({
+                            blendMode: isLastEffect && isLastPassInEffect ? 'alpha' : 'none',
+                            renderToCanvas: isLastEffect && isLastPassInEffect,
+                            clearColor: { r: 1, g: 1, b: 1, a: 0 },
+                            name: passOptions.name,
+                            shaderCode: passOptions.shaderCode,
+                            resources: passOptions.resources || [],
+                        })
                     })
+
                 })
             })
 
@@ -119,8 +133,8 @@ const useLayers = defineStore('layers', {
 
                 const imgUniforms = this.renderer.createUniforms(8)
 
-                const canvasWidth = canvasSettings.value.initialized ? canvasSettings.value.width : 1280
-                const canvasHeight = canvasSettings.value.initialized ? canvasSettings.value.height : 720
+                const canvasWidth = canvasSettings.value.width
+                const canvasHeight = canvasSettings.value.height
 
                 imgUniforms.values.set([
                     canvasWidth, canvasHeight,
@@ -152,8 +166,8 @@ const useLayers = defineStore('layers', {
             if (!imageLayer.uniforms || !this.renderer) return
 
             // 使用动态画布尺寸
-            const canvasWidth = canvasSettings.value.initialized ? canvasSettings.value.width : 1280
-            const canvasHeight = canvasSettings.value.initialized ? canvasSettings.value.height : 720
+            const canvasWidth = canvasSettings.value.width
+            const canvasHeight = canvasSettings.value.height
 
             imageLayer.uniforms.values.set([
                 canvasWidth, canvasHeight,
@@ -302,7 +316,84 @@ const useLayers = defineStore('layers', {
                 }
                 irisMovementEffect.uniforms.apply()
             })
-            
+
+            await this.reRender()
+        },
+
+        async addCursorRippleEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            const maskTexture = await this.getDefaultMaskTexture(0xFFFFFF)
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+
+            const cursorRippleEffect = await createCursorRippleEffect(`${imageLayer.crc}-effect-${c}__cursor-ripple`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                maskTexture: maskTexture,
+            })
+
+            imageLayer.effects.push(cursorRippleEffect)
+
+            const canvasWidth = canvasSettings.value.width
+            const canvasHeight = canvasSettings.value.height
+
+            let lastTime = performance.now()
+            this.updateFrame.push(t => {
+
+                const frameTime = Math.min(0.1, (t - lastTime) * 0.001)
+                lastTime = t
+
+                // Normalize pointer coordinates - no Y flip for Apply Force Pass (match reference implementation)
+                const normPointer = {
+                    x: pointer.x / canvasWidth,
+                    y: pointer.y / canvasHeight,
+                }
+                const normPointerLast = {
+                    x: pointer.lx / canvasWidth,
+                    y: pointer.ly / canvasHeight,
+                }
+
+                const pointerDelta = Math.sqrt(Math.pow(normPointer.x - normPointerLast.x, 2)
+                    + Math.pow(normPointer.y - normPointerLast.y, 2))
+
+                // Much stricter clamp to prevent huge ripples from mouse jumps
+                // This happens when mouse enters from taskbar or page loads
+                const maxPointerDelta = 0.02 // Reduced from 0.05 to prevent large jumps
+                const clampedPointerDelta = Math.min(pointerDelta, maxPointerDelta)
+
+                // Additional safety: completely ignore pointer if it's far outside canvas bounds
+                const isPointerOutOfBounds = pointer.x < -50 || pointer.y < -50
+                    || pointer.x > canvasWidth + 50
+                    || pointer.y > canvasHeight + 50
+
+                const finalPointerDelta = isPointerOutOfBounds ? 0 : clampedPointerDelta
+                
+                cursorRippleEffect.passUniforms.force?.values.set([
+                    normPointer.x, normPointer.y,
+                    normPointerLast.x, normPointerLast.y,
+                    finalPointerDelta * 100,
+                    1.0, // scale
+                    frameTime,
+                ])
+                cursorRippleEffect.passUniforms.force?.apply()
+
+                cursorRippleEffect.passUniforms.simulate?.values.set([
+                    canvasWidth, canvasHeight,
+                    1.0, // speed
+                    1.0, // decay
+                    frameTime,
+                    0.0, // useMask
+                ])
+                cursorRippleEffect.passUniforms.simulate?.apply()
+
+                cursorRippleEffect.passUniforms.combine?.values.set([
+                    canvasWidth, canvasHeight,
+                    1.0, // strength
+                    0.0,
+                ])
+                cursorRippleEffect.passUniforms.combine?.apply()
+            })
+
             await this.reRender()
         },
 
@@ -318,6 +409,9 @@ const useLayers = defineStore('layers', {
                     break
                 case 'water-flow':
                     await this.addWaterFlowEffect(image)
+                    break
+                case 'cursor-ripple':
+                    await this.addCursorRippleEffect(image)
                     break
             }
         },

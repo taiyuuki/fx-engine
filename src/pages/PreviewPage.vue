@@ -373,12 +373,37 @@ async function handleMaskUpdate(dataUrl: string) {
             height,
         }
 
-        currentEffect.value.setResource(maskInfo.value.bindingIndex, texture)
-        const maskName = `${currentEffect.value.name}__mask`
+        const maskPropertyName = maskInfo.value.refKey
+
+        // console.log(maskPropertyName)
+        let maskName = ''
+        if (currentEffect.value.isMultiPass && maskPropertyName) {
+
+            // 多pass
+            const maskConfig = currentEffect.value.getMaskConfig(maskPropertyName)
+
+            if (maskConfig) {
+                const { passName, bindingIndex } = maskConfig
+
+                // 更新pass的资源
+                const pass = currentEffect.value.passes?.find(p => p.name === passName)
+                if (pass && pass.resources) {
+                    pass.resources[bindingIndex] = texture
+                    layers.renderer.updateBindGroupSetResources(passName, 'default', pass?.resources || [])
+                    maskName = `${currentEffect.value.name}.${passName}__mask`
+                }
+            }
+        }
+        else {
+
+            // 单pass
+            currentEffect.value.setResource(maskInfo.value.bindingIndex, texture)
+            layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
+            maskName = `${currentEffect.value.name}__mask`
+        }
+
         layers.materials.set(maskName, currentMask.value)
         currentEffect.value.refs[maskInfo.value.refKey!] = maskName
-
-        layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
     }
 }
 
@@ -440,6 +465,9 @@ onMounted(() => {
       @mousemove="drag"
       @mouseup="endDrag"
       @mouseleave="endDrag"
+      @pointermove="moveEvent"
+      @pointerleave="leaveEvent"
+      @pointerenter="enterEvent"
     >
       <!-- 渲染画布背景 -->
       <div
@@ -481,6 +509,7 @@ onMounted(() => {
           height: canvasSettings.height + 'px',
           transform: `translate(${canvasTransform.translateX}px, ${canvasTransform.translateY}px) scale(${canvasTransform.scale})`,
           transformOrigin: 'top left',
+          pointerEvents: maskControls.isDrawMode ? 'auto' : 'none',
         }"
       >
         <MaskCanvas
@@ -503,7 +532,7 @@ onMounted(() => {
       <div
         v-if="canvasSettings.initialized && currentImage && !maskControls.isDrawMode && handlerVisible"
         class="absolute"
-        style="z-index: 1000;"
+        style="z-index: 1000; pointer-events: none;"
         :style="{
           left: 0,
           top: 0,
@@ -515,6 +544,7 @@ onMounted(() => {
       >
         <div
           class="absolute"
+          style="pointer-events: auto;"
           :style="{
             bottom: `${currentImage.origin.y}px`,
             left: `${currentImage.origin.x}px`,

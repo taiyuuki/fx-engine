@@ -1,5 +1,6 @@
 import type { PassTextureRef, WGSLRenderer } from 'wgsl-renderer'
 import pinia from 'stores/index'
+import { canvasSettings } from 'src/pages/side-bar/composibles'
 import type { PropertyList } from '.'
 import { Effect, PropertyType, createProperty } from '.'
 
@@ -14,8 +15,8 @@ export async function createWaterRippleEffect(name: string, renderer: WGSLRender
 }) {
 
     const wrUniforms = renderer.createUniforms(16)
-    wrUniforms.values[0] = 1280 // resolution.x
-    wrUniforms.values[1] = 720 // resolution.y
+    wrUniforms.values[0] = canvasSettings.value.width // resolution.x
+    wrUniforms.values[1] = canvasSettings.value.height // resolution.y
     wrUniforms.values[2] = 1280 // miku_tex_resolution.x
     wrUniforms.values[3] = 720 // miku_tex_resolution.y
 

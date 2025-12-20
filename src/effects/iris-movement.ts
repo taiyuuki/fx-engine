@@ -1,5 +1,6 @@
 import type { PassTextureRef, WGSLRenderer } from 'wgsl-renderer'
 import pinia from 'src/stores'
+import { canvasSettings } from 'src/pages/side-bar/composibles'
 import type { PropertyList } from '.'
 import { Effect, PropertyType, createProperty } from '.'
 
@@ -12,8 +13,8 @@ export async function createIrisMovementEffect(name: string, renderer: WGSLRende
     maskTexture: GPUTexture | PassTextureRef,
 }) {
     const imUniform = renderer.createUniforms(8)
-    imUniform.values[0] = 1280
-    imUniform.values[1] = 720
+    imUniform.values[0] = canvasSettings.value.width
+    imUniform.values[1] = canvasSettings.value.height
     imUniform.values[2] = 0.5
     imUniform.values[3] = 0.5
     imUniform.values[4] = 1.0
