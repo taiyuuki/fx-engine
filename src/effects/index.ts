@@ -107,20 +107,19 @@ class Effect {
         for (const k in this.properties) {
             const p = this.properties[k]!
             this.refs[p.name] = p.defaultValue
+            this._setUniform(p)
         }
+
+        // Don't apply uniforms in constructor - let calling code handle timing
     }
 
-    applyUniforms(name: string) {
-        const p = this.properties.find(p => p.name === name)
-        if (!p) return
-
+    private _setUniform(p: Property<PropertyType>) {
         const uniformIndex = p.uniformIndex
         let targetUniforms: Uniforms
         let offset: number
 
         if (uniformIndex.length === 3) {
 
-            // 多pass格式: [passName, offset, size]
             const [passName, passOffset] = uniformIndex as [string, number, number]
             const foundUniforms = this.passUniforms[passName]
             if (!foundUniforms) {
@@ -140,15 +139,22 @@ class Effect {
 
         switch (p?.type) {
             case PropertyType.Float:
-                targetUniforms.values[offset] = this.refs[name] as number
+                targetUniforms.values[offset] = this.refs[p.name] as number
                 break
             case PropertyType.Checkbox:
-                targetUniforms.values[offset] = this.refs[name] ? 1.0 : 0.0
+                targetUniforms.values[offset] = this.refs[p.name] ? 1.0 : 0.0
                 break
             default:
                 return
         }
         targetUniforms.apply()
+    }
+
+    applyUniforms(name: string) {
+        const p = this.properties.find(p => p.name === name)
+        if (!p) return
+
+        this._setUniform(p)
     }
 
     setResources(resources: BindingResource[]) {
@@ -169,10 +175,12 @@ class Effect {
 
     // 获取所有可用的passes
     getPassOptionsList(): EffectPassOptions[] {
+
         if (!this.isMultiPass || !this.passes) {
 
             // 单个pass模式
             if (this.shaderCode) {
+
                 return [{
                     name: this.name,
                     shaderCode: this.shaderCode,
@@ -183,7 +191,6 @@ class Effect {
             return []
         }
 
-        // 多个pass模式，只返回满足条件的pass
         return this.passes
     }
 

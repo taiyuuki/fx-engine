@@ -1,6 +1,5 @@
 import type { PassTextureRef, WGSLRenderer } from 'wgsl-renderer'
 import pinia from 'src/stores'
-import { canvasSettings } from 'src/pages/side-bar/composibles'
 import type { PropertyList } from '.'
 import { Effect, PropertyType, createProperty } from '.'
 
@@ -12,13 +11,11 @@ export async function createIrisMovementEffect(name: string, renderer: WGSLRende
     baseTexture: GPUTexture | PassTextureRef,
     maskTexture: GPUTexture | PassTextureRef,
 }) {
-    const imUniform = renderer.createUniforms(8)
-    imUniform.values[0] = canvasSettings.value.width
-    imUniform.values[1] = canvasSettings.value.height
-    imUniform.values[2] = 0.5
-    imUniform.values[3] = 0.5
-    imUniform.values[4] = 1.0
-    imUniform.values[5] = 0.3
+    const imUniform = renderer.createUniforms(4)
+    imUniform.values[0] = 0.5
+    imUniform.values[1] = 0.5
+    imUniform.values[2] = 1.0
+    imUniform.values[3] = 0.3
     const properties: PropertyList = [
         createProperty({
             name: 'alpha_mask',
@@ -33,7 +30,7 @@ export async function createIrisMovementEffect(name: string, renderer: WGSLRende
             type: PropertyType.Float,
             defaultValue: 1.0,
             range: [0.1, 5],
-            uniformIndex: [4, 1],
+            uniformIndex: [2, 1],
         }),
         createProperty({
             name: 'size',
@@ -41,7 +38,7 @@ export async function createIrisMovementEffect(name: string, renderer: WGSLRende
             type: PropertyType.Float,
             defaultValue: 0.3,
             range: [0.1, 0.8],
-            uniformIndex: [5, 1],
+            uniformIndex: [3, 1],
         }),
     ]
 

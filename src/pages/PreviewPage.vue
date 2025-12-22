@@ -338,15 +338,13 @@ function handleWheel(e: WheelEvent) {
 const moveEvent = (e: MouseEvent) => {
     const cvs = $renderCanvas.value!
     const r = cvs.getBoundingClientRect()
-
-    // 考虑画布变换，计算实际的画布坐标
-    const x = (e.clientX - r.left - canvasTransform.translateX) / canvasTransform.scale
-    const y = (e.clientY - r.top - canvasTransform.translateY) / canvasTransform.scale
-
+    if (r.width === 0) return
     pointer.lx = pointer.x
     pointer.ly = pointer.y
-    pointer.x = x * window.devicePixelRatio
-    pointer.y = y * window.devicePixelRatio
+    pointer.x = e.layerX / r.width
+    pointer.y = e.layerY / r.height
+    pointer.ox = pointer.x * canvasSettings.value.width
+    pointer.oy = pointer.y * canvasSettings.value.height 
 }
 
 const leaveEvent = () => {
@@ -356,10 +354,13 @@ const leaveEvent = () => {
 const enterEvent = (e: MouseEvent) => {
     const cvs = $renderCanvas.value!
     const r = cvs.getBoundingClientRect()
-    pointer.x = (e.clientX - r.left) * window.devicePixelRatio
-    pointer.y = (e.clientY - r.top) * window.devicePixelRatio
+    if (r.width === 0) return
     pointer.lx = pointer.x
     pointer.ly = pointer.y
+    pointer.x = e.layerX / r.width
+    pointer.y = e.layerY / r.height
+    pointer.ox = pointer.x * canvasSettings.value.width
+    pointer.oy = pointer.y * canvasSettings.value.height 
 }
 
 // 处理蒙版更新
@@ -461,13 +462,6 @@ onMounted(() => {
     <div
       v-zoom="handleWheel"
       class="absolute inset-0 checkerboard"
-      @mousedown="startDrag"
-      @mousemove="drag"
-      @mouseup="endDrag"
-      @mouseleave="endDrag"
-      @pointermove="moveEvent"
-      @pointerleave="leaveEvent"
-      @pointerenter="enterEvent"
     >
       <!-- 渲染画布背景 -->
       <div
@@ -493,9 +487,6 @@ onMounted(() => {
           transform: `translate(${canvasTransform.translateX}px, ${canvasTransform.translateY}px) scale(${canvasTransform.scale})`,
           transformOrigin: 'top left',
         }"
-        @pointermove="moveEvent"
-        @pointerleave="leaveEvent"
-        @pointerenter="enterEvent"
       />
 
       <!-- 蒙版画布 -->
@@ -509,8 +500,14 @@ onMounted(() => {
           height: canvasSettings.height + 'px',
           transform: `translate(${canvasTransform.translateX}px, ${canvasTransform.translateY}px) scale(${canvasTransform.scale})`,
           transformOrigin: 'top left',
-          pointerEvents: maskControls.isDrawMode ? 'auto' : 'none',
         }"
+        @mousedown="startDrag"
+        @mousemove="drag"
+        @mouseup="endDrag"
+        @mouseleave="endDrag"
+        @pointermove="moveEvent"
+        @pointerleave="leaveEvent"
+        @pointerenter="enterEvent"
       >
         <MaskCanvas
           ref="maskCanvasRef"

@@ -1,5 +1,4 @@
 struct Uniforms {
-    resolution: vec2<f32>, // x=res.x y=res.y
     pointer: vec2<f32>, // mouse position for iris to follow
     scale: f32, // iris scale [0.01, 5.0]
     irisSize: f32, // iris size [0.1, 0.8]
@@ -29,7 +28,7 @@ fn vs_main(@location(0) p: vec3<f32>) -> VSOut {
 fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
 
     // Convert mouse position to normalized coordinates
-    let mousePos = uniforms.pointer / uniforms.resolution;
+    let mousePos = uniforms.pointer;
 
     // Calculate iris movement based on distance from mouse position
     // Flip both X and Y coordinates to match eye movement direction

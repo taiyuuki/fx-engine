@@ -1,5 +1,4 @@
 struct Uniforms {
-    resolution: vec2<f32>,
     rippleStrength: f32,
 };
 

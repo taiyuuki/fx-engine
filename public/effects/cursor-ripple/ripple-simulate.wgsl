@@ -1,5 +1,4 @@
 struct Uniforms {
-    resolution: vec2<f32>,
     rippleSpeed: f32,
     rippleDecay: f32,
     frameTime: f32,

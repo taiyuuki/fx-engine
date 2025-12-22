@@ -4,8 +4,8 @@ import type { ImageLayer } from 'src/stores/layers'
 type DisplayType = 'effectProps' | 'imageProps' | 'maskProps'
 
 const propBarDisplay = ref<DisplayType>('imageProps')
-const currentImage = ref<ImageLayer | null>(null)
-const currentEffect = ref<Effect | null>(null)
+const currentImage = ref<ImageLayer | null>(null) as Ref<ImageLayer | null>
+const currentEffect = ref<Effect | null>(null) as Ref<Effect | null>
 
 // 画布设置
 const canvasSettings = ref({
