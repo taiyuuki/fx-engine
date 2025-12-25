@@ -20,7 +20,7 @@ export async function createWaterFlowEffect(name: string, renderer: WGSLRenderer
     wfUniforms.values[3] = 2.0 // scale [0.01, 10.0]
 
     if (!phaseTexture) {
-        const { texture } = await renderer.loadImageTexture('/effects/water-flow/waterflowphase.png')
+        const { texture } = await renderer.loadImageTexture('/textures/phase.png')
         phaseTexture = texture
     }
 

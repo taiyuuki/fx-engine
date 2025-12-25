@@ -69,6 +69,7 @@ const effectsList = [
     { id: 'iris-movement', label: '虹膜移动' },
     { id: 'water-flow', label: '水流' },
     { id: 'cursor-ripple', label: '游标波纹' },
+    { id: 'cloud-motion', label: '云朵移动' },
 ]
 
 function editEffect() {

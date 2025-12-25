@@ -8,6 +8,7 @@ import { createIrisMovementEffect } from 'src/effects/iris-movement'
 import pinia from 'stores/index'
 import { canvasSettings, currentImage } from 'src/pages/side-bar/composibles'
 import { createWaterFlowEffect } from 'src/effects/water-flow'
+import { createCloudMotionEffect } from 'src/effects/cloud-motion'
 
 const pointer = usePointer(pinia)
 const samplerStore = useSamplerStore()
@@ -81,6 +82,12 @@ const useLayers = defineStore('layers', {
                     blendMode: hasEffects ? 'none' : 'alpha',
                     renderToCanvas: !hasEffects,
                     ...layer.passes[0]!,
+                    clearColor: {
+                        r: 1,
+                        g: 1,
+                        b: 1, 
+                        a: 1,
+                    },
                 })
 
                 // 添加效果passes
@@ -316,6 +323,25 @@ const useLayers = defineStore('layers', {
             })
         },
 
+        async addCloudMotionEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            const maskTexture = await this.getDefaultMaskTexture(0x000000)
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+
+            const cloudMotionEffect = await createCloudMotionEffect(`${imageLayer.crc}-effect-${c}__cloud-motion`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                maskTexture: maskTexture,
+            })
+
+            imageLayer.effects.push(cloudMotionEffect)
+            this.updateFrame.push(t => {
+                cloudMotionEffect.uniforms.values[2] = t * 0.0001
+                cloudMotionEffect.uniforms.apply()
+            })
+        },
+
         async addCursorRippleEffect(imageLayer: ImageLayer) {
             if (!this.renderer) return
 
@@ -362,16 +388,6 @@ const useLayers = defineStore('layers', {
                 cursorRippleEffect.passUniforms.simulate?.apply()
                 cursorRippleEffect.passUniforms.combine?.apply()
             })
-
-            // Let the constructor and property system handle all uniform initialization
-
-            // Apply all uniforms after construction to ensure they are properly set
-            setTimeout(() => {
-                cursorRippleEffect.passUniforms.force!.apply()
-                cursorRippleEffect.passUniforms.simulate!.apply()
-                cursorRippleEffect.passUniforms.combine!.apply()
-            }, 100)
-
         },
 
         async addEffect(effectName: string) {
@@ -386,6 +402,9 @@ const useLayers = defineStore('layers', {
                     break
                 case 'water-flow':
                     await this.addWaterFlowEffect(image)
+                    break
+                case 'cloud-motion':
+                    await this.addCloudMotionEffect(image)
                     break
                 case 'cursor-ripple':
                     await this.addCursorRippleEffect(image)

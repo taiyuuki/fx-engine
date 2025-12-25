@@ -1,6 +1,6 @@
 import type { WGSLRenderer } from 'wgsl-renderer'
 
-type SamplerType = 'high-quality' | 'linear-mipmap' | 'linear' | 'nearest'
+type SamplerType = 'high-quality' | 'linear-mipmap' | 'linear' | 'nearest' | 'repeat'
 
 const useSamplerStore = defineStore('sampler', {
     state: () => ({ samplers: new Map<string, GPUSampler>() }),
@@ -55,6 +55,16 @@ const useSamplerStore = defineStore('sampler', {
                         addressModeU: 'clamp-to-edge',
                         addressModeV: 'clamp-to-edge',
                         addressModeW: 'clamp-to-edge',
+                    }
+                    break
+                case 'repeat':
+                    samplerDescriptor = {
+                        magFilter: 'linear',
+                        minFilter: 'linear',
+                        mipmapFilter: 'linear',
+                        addressModeU: 'repeat',
+                        addressModeV: 'repeat',
+                        addressModeW: 'repeat',
                     }
                     break
                 default:

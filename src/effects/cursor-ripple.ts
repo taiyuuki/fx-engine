@@ -23,6 +23,7 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
 
     // Combine pass uniforms - combines ripples with the original image
     const combineUniforms = renderer.createUniforms(4)
+    simulateUniforms.values[3] = 1.0
 
     // Load shader codes if not already loaded
     if (!forceShaderCode) {
@@ -45,7 +46,7 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             name: 'useMask',
             label: '使用碰撞蒙版',
             type: PropertyType.Checkbox,
-            defaultValue: false,
+            defaultValue: true,
             uniformIndex: ['simulate', 3, 1],
         }),
         createProperty({
