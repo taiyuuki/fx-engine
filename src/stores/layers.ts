@@ -9,6 +9,7 @@ import pinia from 'stores/index'
 import { canvasSettings, currentImage } from 'src/pages/side-bar/composibles'
 import { createWaterFlowEffect } from 'src/effects/water-flow'
 import { createCloudMotionEffect } from 'src/effects/cloud-motion'
+import { createScrollEffect } from 'src/effects/scroll'
 
 const pointer = usePointer(pinia)
 const samplerStore = useSamplerStore()
@@ -390,6 +391,22 @@ const useLayers = defineStore('layers', {
             })
         },
 
+        async addScrollEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+
+            const scrollEffect = await createScrollEffect(`${imageLayer.crc}-effect-${c}__scroll`, this.renderer as WGSLRenderer, { baseTexture: this.renderer.getPassTexture(prePassName) })
+
+            imageLayer.effects.push(scrollEffect)
+
+            this.updateFrame.push(t => {
+                scrollEffect.uniforms.values[4] = t * 0.001 // Convert ms to seconds
+                scrollEffect.uniforms.apply()
+            })
+        },
+
         async addEffect(effectName: string) {
             if (!currentImage.value) return
             const image = currentImage.value
@@ -408,6 +425,9 @@ const useLayers = defineStore('layers', {
                     break
                 case 'cursor-ripple':
                     await this.addCursorRippleEffect(image)
+                    break
+                case 'scroll':
+                    await this.addScrollEffect(image)
                     break
                 default: return
             }

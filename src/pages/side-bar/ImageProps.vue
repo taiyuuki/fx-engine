@@ -70,6 +70,7 @@ const effectsList = [
     { id: 'water-flow', label: '水流' },
     { id: 'cursor-ripple', label: '游标波纹' },
     { id: 'cloud-motion', label: '云朵移动' },
+    { id: 'scroll', label: '滚动' },
 ]
 
 function editEffect() {
