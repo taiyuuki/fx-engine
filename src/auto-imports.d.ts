@@ -13,6 +13,7 @@ declare global {
   const acceptHMRUpdate: typeof import('pinia').acceptHMRUpdate
   const baseLayerPassname: typeof import('./stores/layers').baseLayerPassname
   const boot: typeof import('quasar/wrappers').boot
+  const buildTransformMatrix: typeof import('./stores/layers').buildTransformMatrix
   const computed: typeof import('vue').computed
   const createApp: typeof import('vue').createApp
   const createPinia: typeof import('pinia').createPinia
@@ -27,11 +28,13 @@ declare global {
   const getCurrentWatcher: typeof import('vue').getCurrentWatcher
   const h: typeof import('vue').h
   const inject: typeof import('vue').inject
+  const invertMatrix3x3: typeof import('./stores/layers').invertMatrix3x3
   const isProxy: typeof import('vue').isProxy
   const isReactive: typeof import('vue').isReactive
   const isReadonly: typeof import('vue').isReadonly
   const isRef: typeof import('vue').isRef
   const isShallow: typeof import('vue').isShallow
+  const layerToScreen: typeof import('./stores/layers').layerToScreen
   const mapActions: typeof import('pinia').mapActions
   const mapGetters: typeof import('pinia').mapGetters
   const mapState: typeof import('pinia').mapState

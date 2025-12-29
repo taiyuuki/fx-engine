@@ -12,6 +12,15 @@ const imageTransform = reactive({
     originY: 0,
     scaleX: 1,
     scaleY: 1,
+    rotation: 0, // 弧度
+})
+
+// 旋转角度的度数显示（用于 UI）
+const rotationDegrees = computed({
+    get: () => Math.round(imageTransform.rotation * 180 / Math.PI),
+    set: (value: number) => {
+        imageTransform.rotation = value * Math.PI / 180
+    },
 })
 
 // 监听当前图片变化
@@ -21,6 +30,7 @@ watch(currentImage, () => {
         imageTransform.originY = currentImage.value.origin.y
         imageTransform.scaleX = currentImage.value.scale.x
         imageTransform.scaleY = currentImage.value.scale.y
+        imageTransform.rotation = currentImage.value.rotation
     }
 }, { immediate: true })
 
@@ -39,6 +49,12 @@ watch(() => currentImage.value?.scale, () => {
     }
 }, { deep: true })
 
+watch(() => currentImage.value?.rotation, () => {
+    if (currentImage.value) {
+        imageTransform.rotation = currentImage.value.rotation
+    }
+})
+
 // 监听变换参数变化
 watch([imageTransform], () => {
     if (currentImage.value) {
@@ -46,6 +62,7 @@ watch([imageTransform], () => {
         currentImage.value.origin.y = imageTransform.originY
         currentImage.value.scale.x = imageTransform.scaleX
         currentImage.value.scale.y = imageTransform.scaleY
+        currentImage.value.rotation = imageTransform.rotation
 
         // 更新 uniform buffer
         if (currentImage.value) {
@@ -91,6 +108,7 @@ function resetTransform() {
     imageTransform.originY = 0
     imageTransform.scaleX = 1
     imageTransform.scaleY = 1
+    imageTransform.rotation = 0
     currentImage.value && layers.updateImageTransform(currentImage.value)
 }
 </script>
@@ -271,6 +289,30 @@ function resetTransform() {
         >
           <template #append>
             <span class="text-xs text-gray-500">x</span>
+          </template>
+        </q-input>
+      </div>
+
+      <!-- 旋转角度 -->
+      <div class="flex items-center justify-between">
+        <label class="text-sm font-medium text-gray-700 dark:text-gray-300 w-12">
+          旋转
+        </label>
+        <q-input
+          v-model.number="rotationDegrees"
+          type="number"
+          dense
+          outlined
+          style="width: 100px"
+          :min="-360"
+          :max="360"
+          step="1"
+          @update:model-value="() => {
+            currentImage && layers.updateImageTransform(currentImage);
+          }"
+        >
+          <template #append>
+            <span class="text-xs text-gray-500">°</span>
           </template>
         </q-input>
       </div>

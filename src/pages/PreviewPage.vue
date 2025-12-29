@@ -148,10 +148,12 @@ const imageHandler = reactive({
     isDragging: false,
     axis: null as 'x' | 'y' | null,
     isScaling: false,
+    isRotating: false,
     startX: 0,
     startY: 0,
     originStart: { x: 0, y: 0 },
     scaleStart: { x: 1, y: 1 },
+    rotationStart: 0,
 })
 
 function startDrag(e: MouseEvent) {
@@ -191,6 +193,7 @@ function endDrag() {
 // 图片位置 handler 函数
 function startImageHandlerDrag(e: MouseEvent) {
     e.stopPropagation()
+    e.preventDefault()
     if (isCtrlPressed.value) return // Ctrl+拖动时优先处理画布拖动
 
     imageHandler.isDragging = true
@@ -198,6 +201,10 @@ function startImageHandlerDrag(e: MouseEvent) {
     imageHandler.isScaling = false
     imageHandler.startX = e.clientX
     imageHandler.startY = e.clientY
+
+    // 设置拖动时光标状态
+    document.body.style.cursor = 'grabbing'
+    document.body.style.userSelect = 'none'
 
     if (currentImage.value) {
         imageHandler.originStart = {
@@ -210,6 +217,7 @@ function startImageHandlerDrag(e: MouseEvent) {
 // 单轴拖动
 function startAxisDrag(e: MouseEvent, axis: 'x' | 'y') {
     e.stopPropagation()
+    e.preventDefault()
     if (isCtrlPressed.value) return
 
     imageHandler.isDragging = true
@@ -217,6 +225,10 @@ function startAxisDrag(e: MouseEvent, axis: 'x' | 'y') {
     imageHandler.isScaling = false
     imageHandler.startX = e.clientX
     imageHandler.startY = e.clientY
+
+    // 设置拖动时光标状态
+    document.body.style.cursor = 'grabbing'
+    document.body.style.userSelect = 'none'
 
     if (currentImage.value) {
         imageHandler.originStart = {
@@ -229,6 +241,7 @@ function startAxisDrag(e: MouseEvent, axis: 'x' | 'y') {
 // 缩放拖动
 function startScaleDrag(e: MouseEvent, axis?: 'x' | 'y') {
     e.stopPropagation()
+    e.preventDefault()
     if (isCtrlPressed.value) return
 
     imageHandler.isDragging = true
@@ -236,6 +249,10 @@ function startScaleDrag(e: MouseEvent, axis?: 'x' | 'y') {
     imageHandler.isScaling = true
     imageHandler.startX = e.clientX
     imageHandler.startY = e.clientY
+
+    // 设置拖动时光标状态
+    document.body.style.cursor = 'grabbing'
+    document.body.style.userSelect = 'none'
 
     if (currentImage.value) {
         imageHandler.originStart = {
@@ -251,6 +268,25 @@ function startScaleDrag(e: MouseEvent, axis?: 'x' | 'y') {
 
 function dragImageHandler(e: MouseEvent) {
     if (!imageHandler.isDragging || !currentImage.value) return
+
+    // 旋转操作
+    if (imageHandler.isRotating) {
+        e.preventDefault() // 阻止默认行为，防止选择文本等
+        // 计算鼠标相对于起始位置的移动距离
+        const dx = e.clientX - imageHandler.startX
+        const dy = e.clientY - imageHandler.startY
+
+        // 圆弧在第一象限，从上到下
+        // 鼠标向右下移动 → 逆时针旋转（减少角度）
+        // 鼠标向左上移动 → 顺时针旋转（增加角度）
+        const angleDelta = (dx + dy) * 0.005
+
+        // 基于起始旋转值计算
+        currentImage.value.rotation = imageHandler.rotationStart + angleDelta
+        layers.updateImageTransform(currentImage.value)
+
+        return
+    }
 
     // 考虑画布缩放，计算实际的偏移量
     const dx = (e.clientX - imageHandler.startX) / canvasTransform.scale
@@ -301,9 +337,35 @@ function dragImageHandler(e: MouseEvent) {
 }
 
 function endImageHandlerDrag() {
+
+    // 恢复光标和选择状态
+    document.body.style.cursor = ''
+    document.body.style.userSelect = ''
+
     imageHandler.isDragging = false
     imageHandler.axis = null
     imageHandler.isScaling = false
+    imageHandler.isRotating = false
+}
+
+// 旋转拖动
+function startRotateDrag(e: MouseEvent) {
+    e.stopPropagation()
+    e.preventDefault()
+    if (isCtrlPressed.value) return
+
+    imageHandler.isDragging = true
+    imageHandler.isRotating = true
+    imageHandler.startX = e.clientX
+    imageHandler.startY = e.clientY
+
+    // 设置旋转时光标状态
+    document.body.style.cursor = 'grabbing'
+    document.body.style.userSelect = 'none'
+
+    if (currentImage.value) {
+        imageHandler.rotationStart = currentImage.value.rotation
+    }
 }
 
 function handleWheel(e: WheelEvent) {
@@ -611,6 +673,46 @@ onMounted(() => {
             style="width: 32px; height: 32px; bottom: 20px; left: 20px;"
             @mousedown="startImageHandlerDrag"
           />
+
+          <!-- 旋转手柄 - 第一象限的圆弧，圆心在原点 -->
+          <svg
+            class="absolute"
+            style="
+              width: 300px;
+              height: 300px;
+              bottom: -150px;
+              left: -150px;
+              pointer-events: none;
+            "
+            viewBox="0 0 300 300"
+          >
+            <!-- 可点击的圆弧路径（透明） -->
+            <path
+              d="M 173 63 A 90 90 0 0 1 237 127"
+              fill="none"
+              stroke="transparent"
+              stroke-width="30"
+              style="pointer-events: auto; cursor: grab;"
+              @mousedown="startRotateDrag"
+            />
+            <!-- 视觉圆弧 -->
+            <path
+              d="M 173 63 A 90 90 0 0 1 237 127"
+              fill="none"
+              stroke="rgb(168 85 247)"
+              stroke-width="10"
+              opacity="0.7"
+              stroke-linecap="round"
+              style="pointer-events: none;"
+            />
+            <!-- 旋转指示箭头 -->
+            <path
+              d="M 225 75 L 218 90 L 233 85 Z"
+              fill="rgb(168 85 247)"
+              opacity="0.9"
+              style="pointer-events: none;"
+            />
+          </svg>
 
           <!-- 轴标签 -->
           <div

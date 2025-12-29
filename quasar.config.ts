@@ -59,6 +59,7 @@ export default defineConfig(() => {
                         tsConfig.compilerOptions = {
                             ...tsConfig.compilerOptions,
                             exactOptionalPropertyTypes: void 0,
+                            noUncheckedIndexedAccess: void 0,
                             types: ['@webgpu/types'],
                         }
                     }

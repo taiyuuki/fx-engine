@@ -37,12 +37,116 @@ export interface ImageLayer {
         x: number,
         y: number,
     },
+    rotation: number, // 旋转角度（弧度）
     passes: RenderPassOptions[],
     effects: Effect[],
     uniforms?: Uniforms,
 }
 
 const shaders: Record<string, string> = {}
+
+/**
+ * 构建从屏幕空间到图层空间的 3x3 变换矩阵（column-major order）
+ * 变换顺序：先缩放，再旋转，最后平移 (T * R * S)
+ *
+ * 变换流程：
+ * 1. 缩放：scale.x, scale.y
+ * 2. 旋转：rotation (弧度)
+ * 3. 平移：origin.x, origin.y (屏幕坐标系中的位置)
+ *
+ * 注意：这里的矩阵实现的是从屏幕坐标到图层坐标的转换
+ * 即：layerPos = M * screenPos
+ */
+export function buildTransformMatrix(
+    originX: number,
+    originY: number,
+    scaleX: number,
+    scaleY: number,
+    rotation: number,
+): Float32Array {
+    const cos = Math.cos(rotation)
+    const sin = Math.sin(rotation)
+
+    // 平移：屏幕坐标到图层原点的偏移
+    // 我们需要将屏幕坐标转换到以图层原点为基准的坐标系
+    const tx = -originX
+    const ty = -originY
+
+    // 缩放的倒数（用于从屏幕坐标映射到图层坐标）
+    const sx = 1 / scaleX
+    const sy = 1 / scaleY
+
+    // 构建列主序矩阵 T * R * S：
+    // | cos*sx  -sin*sy   tx |
+    // | sin*sx   cos*sy   ty |
+    // |   0        0       1  |
+
+    return new Float32Array([
+        cos * sx, // [0] col 0, row 0
+        sin * sx, // [1] col 0, row 1
+        0.0, // [2] col 0, row 2
+        -sin * sy, // [3] col 1, row 0
+        cos * sy, // [4] col 1, row 1
+        0.0, // [5] col 1, row 2
+        tx, // [6] col 2, row 0
+        ty, // [7] col 2, row 1
+        1.0, // [8] col 2, row 2
+    ])
+}
+
+/**
+ * 计算 3x3 矩阵的逆矩阵（列主序）
+ * 用于从图层坐标转换回屏幕坐标
+ *
+ * 对于变换矩阵 M = T * R * S
+ * 逆矩阵 M^-1 = S^-1 * R^-1 * T^-1
+ */
+export function invertMatrix3x3(m: Float32Array): Float32Array {
+
+    // 行列式计算
+    const det = m[0] * (m[4] * m[8] - m[5] * m[7])
+        - m[3] * (m[1] * m[8] - m[2] * m[7])
+        + m[6] * (m[1] * m[5] - m[2] * m[4])
+
+    if (Math.abs(det) < 1e-10) {
+
+        // 矩阵不可逆，返回单位矩阵
+        return new Float32Array([1, 0, 0, 0, 1, 0, 0, 0, 1])
+    }
+
+    const invDet = 1.0 / det
+
+    return new Float32Array([
+        (m[4] * m[8] - m[5] * m[7]) * invDet, // [0]
+        (m[2] * m[7] - m[1] * m[8]) * invDet, // [1]
+        (m[1] * m[5] - m[2] * m[4]) * invDet, // [2]
+        (m[5] * m[6] - m[3] * m[8]) * invDet, // [3]
+        (m[0] * m[8] - m[2] * m[6]) * invDet, // [4]
+        (m[2] * m[3] - m[0] * m[5]) * invDet, // [5]
+        (m[3] * m[7] - m[4] * m[6]) * invDet, // [6]
+        (m[1] * m[6] - m[0] * m[7]) * invDet, // [7]
+        (m[0] * m[4] - m[1] * m[3]) * invDet, // [8]
+    ])
+}
+
+/**
+ * 使用逆矩阵将图层坐标转换为屏幕坐标
+ * @param layerPos 图层空间坐标
+ * @param invTransform 逆变换矩阵
+ * @returns 屏幕空间坐标
+ */
+export function layerToScreen(
+    layerX: number,
+    layerY: number,
+    invTransform: Float32Array,
+): { x: number, y: number } {
+
+    // 应用逆矩阵：screenPos = M^-1 * layerPos
+    const screenX = invTransform[0] * layerX + invTransform[3] * layerY + invTransform[6]
+    const screenY = invTransform[1] * layerX + invTransform[4] * layerY + invTransform[7]
+
+    return { x: screenX, y: screenY }
+}
 
 async function createShader(name: string) {
     if (shaders[name]) {
@@ -140,16 +244,29 @@ const useLayers = defineStore('layers', {
                 imageLayer.size.width = width
                 imageLayer.size.height = height
 
-                const imgUniforms = this.renderer.createUniforms(8)
+                const imgUniforms = this.renderer.createUniforms(16)
 
                 const canvasWidth = canvasSettings.value.width
                 const canvasHeight = canvasSettings.value.height
 
+                const transformMatrix = buildTransformMatrix(0, 0, 1, 1, 0)
+
+                // 使用 vec4 数组存储 3x3 矩阵，每列一个 vec4
+                // m[0] = col0: (cos/sx, sin/sx, 0, padding)
+                // m[1] = col1: (-sin/sy, cos/sy, 0, padding)
+                // m[2] = col2: (tx, ty, 1, padding)
+
                 imgUniforms.values.set([
-                    canvasWidth, canvasHeight,
-                    width, height,
-                    0, 0,
-                    1, 1,
+                    canvasWidth, canvasHeight, // [0-1] canvas_res
+                    width, height, // [2-3] image_res
+                    // m[0] = col0
+                    transformMatrix[0], transformMatrix[1], transformMatrix[2], 0,
+
+                    // m[1] = col1
+                    transformMatrix[3], transformMatrix[4], transformMatrix[5], 0,
+
+                    // m[2] = col2
+                    transformMatrix[6], transformMatrix[7], transformMatrix[8], 0,
                 ])
                 imgUniforms.apply()
 
@@ -178,11 +295,26 @@ const useLayers = defineStore('layers', {
             const canvasWidth = canvasSettings.value.width
             const canvasHeight = canvasSettings.value.height
 
+            // 构建变换矩阵
+            const transformMatrix = buildTransformMatrix(
+                imageLayer.origin.x,
+                imageLayer.origin.y,
+                imageLayer.scale.x,
+                imageLayer.scale.y,
+                imageLayer.rotation,
+            )
+
             imageLayer.uniforms.values.set([
-                canvasWidth, canvasHeight,
-                imageLayer.size.width, imageLayer.size.height,
-                imageLayer.origin.x, imageLayer.origin.y,
-                imageLayer.scale.x, imageLayer.scale.y,
+                canvasWidth, canvasHeight, // [0-1] canvas_res
+                imageLayer.size.width, imageLayer.size.height, // [2-3] image_res
+                // m[0] = col0
+                transformMatrix[0], transformMatrix[1], transformMatrix[2], 0,
+
+                // m[1] = col1
+                transformMatrix[3], transformMatrix[4], transformMatrix[5], 0,
+
+                // m[2] = col2
+                transformMatrix[6], transformMatrix[7], transformMatrix[8], 0,
             ])
 
             imageLayer.uniforms.apply()
@@ -254,6 +386,7 @@ const useLayers = defineStore('layers', {
                     x: 1,
                     y: 1,
                 },
+                rotation: 0,
                 passes: [],
                 effects: [],
             }
