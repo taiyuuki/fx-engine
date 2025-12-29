@@ -45,8 +45,8 @@ fn vs_main(@location(0) p: vec3<f32>) -> VSOut {
 
 @fragment
 fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
-    // 检查UV是否在有效范围内
-    if (uv.x < 0.0 || uv.x > 1.0 || uv.y < 0.0 || uv.y > 1.0) {
+
+    if uv.x > 1.0 || uv.y > 1.0 || uv.x < 0 || uv.y < 0 {
         discard;
     }
 

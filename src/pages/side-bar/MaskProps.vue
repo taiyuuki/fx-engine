@@ -38,6 +38,7 @@ const maxBrushSize = computed(() => {
 })
 
 function goBack(target: DisplayType) {
+
     // 退出绘制模式
     maskControls.value.isDrawMode = false
     propBarDisplay.value = target

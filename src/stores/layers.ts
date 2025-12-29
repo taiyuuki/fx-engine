@@ -10,6 +10,9 @@ import { canvasSettings, currentImage } from 'src/pages/side-bar/composibles'
 import { createWaterFlowEffect } from 'src/effects/water-flow'
 import { createCloudMotionEffect } from 'src/effects/cloud-motion'
 import { createScrollEffect } from 'src/effects/scroll'
+import { createWaterWavesEffect } from 'src/effects/waterwaves'
+import { createShakeEffect } from 'src/effects/shake'
+import { createDepthParallaxEffect } from 'src/effects/depthparallax'
 
 const pointer = usePointer(pinia)
 const samplerStore = useSamplerStore()
@@ -540,6 +543,89 @@ const useLayers = defineStore('layers', {
             })
         },
 
+        async addWaterWavesEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            const maskTexture = await this.getDefaultMaskTexture(0)
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+
+            const waterWavesEffect = await createWaterWavesEffect(`${imageLayer.crc}-effect-${c}__waterwaves`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                maskTexture: maskTexture,
+            })
+
+            imageLayer.effects.push(waterWavesEffect)
+
+            this.updateFrame.push(t => {
+                waterWavesEffect.uniforms.values[2] = t * 0.001 // time
+                waterWavesEffect.uniforms.apply()
+            })
+        },
+
+        async addShakeEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            const flowMaskTexture = await this.getDefaultMaskTexture(0x7F7F00)
+            const timeOffsetTexture = await this.getDefaultMaskTexture(0)
+            const opacityMaskTexture = await this.getDefaultMaskTexture(0)
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+
+            const shakeEffect = await createShakeEffect(`${imageLayer.crc}-effect-${c}__shake`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                flowMaskTexture: flowMaskTexture,
+                timeOffsetTexture: timeOffsetTexture,
+                opacityMaskTexture: opacityMaskTexture,
+            })
+
+            imageLayer.effects.push(shakeEffect)
+
+            this.updateFrame.push(t => {
+                shakeEffect.uniforms.values[0] = t * 0.001 // time in seconds
+                shakeEffect.uniforms.apply()
+            })
+        },
+
+        async addDepthParallaxEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            // Create default black depth texture (no depth)
+            const depthTexture = await this.getDefaultMaskTexture(0x000000)
+            const maskTexture = await this.getDefaultMaskTexture(0)
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+
+            const depthParallaxEffect = await createDepthParallaxEffect(`${imageLayer.crc}-effect-${c}__depthparallax`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                depthTexture: depthTexture,
+                maskTexture: maskTexture,
+            })
+
+            imageLayer.effects.push(depthParallaxEffect)
+
+            // Store default depth texture in materials
+            const defaultDepthMaskName = 'defaultDepthMap-000000'
+            if (!this.materials.has(defaultDepthMaskName)) {
+                this.materials.set(defaultDepthMaskName, {
+                    url: '',
+                    texture: depthTexture,
+                    width: 1,
+                    height: 1,
+                })
+            }
+
+            this.updateFrame.push(() => {
+                if (pointer.x >= 0) {
+                    depthParallaxEffect.uniforms.values[2] = pointer.x
+                }
+                if (pointer.y >= 0) {
+                    depthParallaxEffect.uniforms.values[3] = pointer.y
+                }
+                depthParallaxEffect.uniforms.apply()
+            })
+        },
+
         async addEffect(effectName: string) {
             if (!currentImage.value) return
             const image = currentImage.value
@@ -561,6 +647,15 @@ const useLayers = defineStore('layers', {
                     break
                 case 'scroll':
                     await this.addScrollEffect(image)
+                    break
+                case 'waterwaves':
+                    await this.addWaterWavesEffect(image)
+                    break
+                case 'shake':
+                    await this.addShakeEffect(image)
+                    break
+                case 'depthparallax':
+                    await this.addDepthParallaxEffect(image)
                     break
                 default: return
             }

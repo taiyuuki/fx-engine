@@ -6,6 +6,7 @@ const props = defineProps<{
     propName: string,
     bindingIndex: number,
     propertyIndex: number,
+    propertyKey: string,
     flowMode?: boolean
 }>()
 const layers = useLayers()
@@ -18,7 +19,7 @@ function inputCurrentImage() {
     currentMask.value = material.value
     maskInfo.value.bindingIndex = props.bindingIndex
     maskInfo.value.propertyIndex = props.propertyIndex
-    maskInfo.value.refKey = props.flowMode ? 'flow_mask' : 'alpha_mask'
+    maskInfo.value.refKey = props.propertyKey
     maskControls.value.flowMode = props.flowMode
     $inputEl.value?.click()
 }
@@ -32,7 +33,7 @@ function drawMask() {
     currentMask.value = material.value
     maskInfo.value.bindingIndex = props.bindingIndex
     maskInfo.value.propertyIndex = props.propertyIndex
-    maskInfo.value.refKey = props.flowMode ? 'flow_mask' : 'alpha_mask'
+    maskInfo.value.refKey = props.propertyKey
     maskControls.value.flowMode = props.flowMode
     propBarDisplay.value = 'maskProps'
 
@@ -70,7 +71,7 @@ function showTextureSelection() {
     currentMask.value = material.value
     maskInfo.value.bindingIndex = props.bindingIndex
     maskInfo.value.propertyIndex = props.propertyIndex
-    maskInfo.value.refKey = 'alpha_mask'
+    maskInfo.value.refKey = props.propertyKey
 
     showTextureDialog.value = true
     selectedTexture.value = null

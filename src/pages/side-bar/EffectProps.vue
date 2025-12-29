@@ -67,11 +67,31 @@ import MaskMenu from './MaskMenu.vue'
               @update:model-value="currentEffect.applyUniforms(p.name)"
             />
           </template>
+          <template v-if="p.type === PropertyType.Select">
+            <div class="mb-2">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                {{ p.label }}
+              </label>
+              <q-select
+                v-model="currentEffect!.refs[p.name] as number"
+                :options="p.options || []"
+                option-label="label"
+                option-value="value"
+                emit-value
+                map-options
+                outlined
+                dense
+                class="w-full"
+                @update:model-value="currentEffect.applyUniforms(p.name)"
+              />
+            </div>
+          </template>
           <template v-if="p.type === PropertyType.AlphaMask">
             <MaskMenu
               :prop-name="currentEffect.refs[p.name] as string"
               :binding-index="-p.uniformIndex[0]"
               :property-index="i"
+              :property-key="p.name"
               :flow-mode="false"
             />
           </template>
@@ -80,6 +100,7 @@ import MaskMenu from './MaskMenu.vue'
               :prop-name="currentEffect.refs[p.name] as string"
               :binding-index="-p.uniformIndex[0]"
               :property-index="i"
+              :property-key="p.name"
               :flow-mode="true"
             />
           </template>

@@ -9,6 +9,7 @@ enum PropertyType {
     FlowMask = 'flow_mask',
     Checkbox = 'checkbox',
     Array = 'array',
+    Select = 'select',
 }
 
 interface PropertyValueMap {
@@ -20,9 +21,15 @@ interface PropertyValueMap {
     [PropertyType.FlowMask]: string;
     [PropertyType.Checkbox]: boolean;
     [PropertyType.Array]: number[];
+    [PropertyType.Select]: number;
 }
 
 type PropertyValue<T extends PropertyType> = PropertyValueMap[T]
+
+type SelectOption = {
+    value: number
+    label: string
+}
 
 type Property<P extends PropertyType> = {
     name: string
@@ -32,6 +39,7 @@ type Property<P extends PropertyType> = {
     uniformIndex: [number, number] | [string, number, number] // [offset, size] 或 [passName, offset, size] for multi-pass
     range: [number, number]
     condition: boolean | ({ (): boolean })
+    options?: SelectOption[] // For Select type only
 } 
 
 type PropertyList<P extends PropertyType = PropertyType> = Property<P>[]
@@ -144,6 +152,9 @@ class Effect {
             case PropertyType.Checkbox:
                 targetUniforms.values[offset] = this.refs[p.name] ? 1.0 : 0.0
                 break
+            case PropertyType.Select:
+                targetUniforms.values[offset] = this.refs[p.name] as number
+                break
             default:
                 return
         }
@@ -219,7 +230,7 @@ class Effect {
 
 export {
     PropertyType,
-    Effect, 
+    Effect,
     createProperty,
 }
 
@@ -227,4 +238,5 @@ export type {
     PropertyValue,
     Property, PropertyList,
     EffectPassOptions,
+    SelectOption,
 }

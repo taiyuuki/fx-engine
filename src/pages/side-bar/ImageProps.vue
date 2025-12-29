@@ -88,6 +88,9 @@ const effectsList = [
     { id: 'cursor-ripple', label: '游标波纹' },
     { id: 'cloud-motion', label: '云朵移动' },
     { id: 'scroll', label: '滚动' },
+    { id: 'waterwaves', label: '水波浪' },
+    { id: 'shake', label: '抖动' },
+    { id: 'depthparallax', label: '深度视差' },
 ]
 
 function editEffect() {
