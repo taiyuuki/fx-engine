@@ -2,6 +2,26 @@
 import { PropertyType } from 'src/effects'
 import { currentEffect, propBarDisplay } from './composibles'
 import MaskMenu from './MaskMenu.vue'
+
+function rgbToHex(rgb: number[]): string {
+    const toHex = (n: number) => {
+        const hex = Math.round(n * 255).toString(16)
+
+        return hex.length === 1 ? `0${hex}` : hex
+    }
+
+    return `#${toHex(rgb[0])}${toHex(rgb[1])}${toHex(rgb[2])}`
+}
+
+function hexToRgb(hex: string) {
+    const result = /^#?([\da-f]{2})([\da-f]{2})([\da-f]{2})$/i.exec(hex)
+
+    return result ? {
+        r: Number.parseInt(result[1], 16),
+        g: Number.parseInt(result[2], 16),
+        b: Number.parseInt(result[3], 16),
+    } : { r: 0, g: 0, b: 0 }
+}
 </script>
 
 <template>
@@ -52,9 +72,9 @@ import MaskMenu from './MaskMenu.vue'
             </div>
             <q-slider
               v-model="currentEffect!.refs[p.name] as number"
-              :step="0.01"
               :min="p.range![0]"
               :max="p.range![1]"
+              :step="p.range![2] ?? 0.01"
               class="flex-1"
               @change="currentEffect.applyUniforms(p.name)"
             />
@@ -69,12 +89,10 @@ import MaskMenu from './MaskMenu.vue'
           </template>
           <template v-if="p.type === PropertyType.Select">
             <div class="mb-2">
-              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
-                {{ p.label }}
-              </label>
               <q-select
                 v-model="currentEffect!.refs[p.name] as number"
                 :options="p.options || []"
+                :label="p.label"
                 option-label="label"
                 option-value="value"
                 emit-value
@@ -103,6 +121,91 @@ import MaskMenu from './MaskMenu.vue'
               :property-key="p.name"
               :flow-mode="true"
             />
+          </template>
+          <template v-if="p.type === PropertyType.Vec2">
+            <div class="mb-3">
+              <label class="text-sm font-medium text-gray-700 dark:text-gray-300 block mb-2">
+                {{ p.label }}
+              </label>
+              <div class="flex gap-4 items-center">
+                <div class="flex-1">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-gray-500">X</span>
+                    <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-400">
+                      {{ (currentEffect.refs[p.name] as number[])[0].toFixed(2) }}
+                    </span>
+                  </div>
+                  <q-slider
+                    v-model="(currentEffect.refs[p.name] as number[])[0]"
+                    :step="0.01"
+                    :min="p.range![0]"
+                    :max="p.range![1]"
+                    @change="currentEffect.applyUniforms(p.name)"
+                  />
+                </div>
+                <div class="flex-1">
+                  <div class="flex items-center justify-between mb-1">
+                    <span class="text-xs text-gray-500">Y</span>
+                    <span class="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-800 rounded text-gray-600 dark:text-gray-400">
+                      {{ (currentEffect.refs[p.name] as number[])[1].toFixed(2) }}
+                    </span>
+                  </div>
+                  <q-slider
+                    v-model="(currentEffect.refs[p.name] as number[])[1]"
+                    :step="0.01"
+                    :min="p.range![0]"
+                    :max="p.range![1]"
+                    @change="currentEffect.applyUniforms(p.name)"
+                  />
+                </div>
+              </div>
+            </div>
+          </template>
+          <template v-if="p.type === PropertyType.Color">
+            <div class="mb-2">
+              <q-input
+                outlined
+                dense
+                :label="p.label"
+                :model-value="rgbToHex(currentEffect.refs[p.name] as number[])"
+                class="w-full"
+                @update:model-value="(hex: string | number | null) => {
+                  if (!hex) return
+                  const colorArray = currentEffect!.refs[p.name] as number[]
+                  const rgb = hexToRgb(hex.toString())
+                  colorArray[0] = rgb.r / 255
+                  colorArray[1] = rgb.g / 255
+                  colorArray[2] = rgb.b / 255
+                  currentEffect?.applyUniforms(p.name)
+                }"
+              >
+                <template #prepend>
+                  <q-icon
+                    name="colorize"
+                    class="cursor-pointer"
+                  >
+                    <q-popup-proxy
+                      cover
+                      transition-show="scale"
+                      transition-hide="scale"
+                    >
+                      <q-color
+                        :model-value="rgbToHex(currentEffect.refs[p.name] as number[])"
+                        @update:model-value="(hex: string | null) => {
+                          if (!hex) return
+                          const colorArray = currentEffect!.refs[p.name] as number[]
+                          const rgb = hexToRgb(hex)
+                          colorArray[0] = rgb.r / 255
+                          colorArray[1] = rgb.g / 255
+                          colorArray[2] = rgb.b / 255
+                          currentEffect?.applyUniforms(p.name)
+                        }"
+                      />
+                    </q-popup-proxy>
+                  </q-icon>
+                </template>
+              </q-input>
+            </div>
           </template>
         </div>
       </template>

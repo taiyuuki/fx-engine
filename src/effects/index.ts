@@ -37,7 +37,7 @@ type Property<P extends PropertyType> = {
     type: P
     defaultValue: PropertyValue<P>
     uniformIndex: [number, number] | [string, number, number] // [offset, size] 或 [passName, offset, size] for multi-pass
-    range: [number, number]
+    range: [number, number, number?] // [min, max, step]
     condition: boolean | ({ (): boolean })
     options?: SelectOption[] // For Select type only
 } 
@@ -117,8 +117,6 @@ class Effect {
             this.refs[p.name] = p.defaultValue
             this._setUniform(p)
         }
-
-        // Don't apply uniforms in constructor - let calling code handle timing
     }
 
     private _setUniform(p: Property<PropertyType>) {
@@ -154,6 +152,21 @@ class Effect {
                 break
             case PropertyType.Select:
                 targetUniforms.values[offset] = this.refs[p.name] as number
+                break
+            case PropertyType.Vec2:
+                {
+                    const arr = this.refs[p.name] as number[]
+                    targetUniforms.values[offset] = arr[0]
+                    targetUniforms.values[offset + 1] = arr[1]
+                }
+                break
+            case PropertyType.Color:
+                {
+                    const arr = this.refs[p.name] as number[]
+                    targetUniforms.values[offset] = arr[0]
+                    targetUniforms.values[offset + 1] = arr[1]
+                    targetUniforms.values[offset + 2] = arr[2]
+                }
                 break
             default:
                 return

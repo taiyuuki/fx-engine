@@ -7,14 +7,16 @@ struct Uniforms {
     sensitivity: f32,
     center: f32,
     quality: f32, // 0=basic, 1=occlusion performance, 2=occlusion quality
-    use_mask: f32,
+    enable_x: f32,
+    enable_y: f32,
+    invert_x: f32,
+    invert_y: f32,
 };
 
 @group(0) @binding(0) var tex : texture_2d<f32>;
 @group(0) @binding(1) var depth_tex : texture_2d<f32>;
-@group(0) @binding(2) var mask_tex : texture_2d<f32>;
-@group(0) @binding(3) var samp : sampler;
-@group(0) @binding(4) var<uniform> uniforms: Uniforms;
+@group(0) @binding(2) var samp : sampler;
+@group(0) @binding(3) var<uniform> uniforms: Uniforms;
 
 struct VSOut {
     @builtin(position) pos: vec4<f32>,
@@ -29,7 +31,7 @@ fn vs_main(@location(0) p: vec3<f32>) -> VSOut {
     o.uv = p.xy * 0.5 + vec2<f32>(0.5, 0.5);
     o.uv.y = 1.0 - o.uv.y;
 
-    // Normalize pointer to [0, 1] then convert to parallax offset
+    // Normalize pointer to [0, 1]
     let pointer = vec2<f32>(uniforms.pointer_x, 1.0 - uniforms.pointer_y);
     o.parallax_offset = pointer;
 
@@ -37,19 +39,14 @@ fn vs_main(@location(0) p: vec3<f32>) -> VSOut {
 }
 
 fn ParallaxMapping(texCoords: vec2<f32>, viewDir: vec2<f32>) -> vec2<f32> {
-    // Simplified parallax that works with WGSL uniform flow restrictions
-    // Instead of iterative depth sampling, use direct depth-based offset
+    // Simplified parallax mapping - depth controls offset amount
+    // depth = 0 (black/far) -> no offset
+    // depth = 1 (white/close) -> maximum offset
 
-    let quality = i32(uniforms.quality);
     let depth = textureSample(depth_tex, samp, texCoords).r;
 
     // Apply parallax offset based on depth value
-    let numLayers = select(24.0, 64.0, quality == 1);
-    let layerDepth = 1.0 / numLayers;
-
-    // Calculate parallax offset: higher depth values = more offset
-    let parallaxDepth = depth * numLayers;
-    let parallaxOffset = viewDir * parallaxDepth * layerDepth * 0.1;
+    let parallaxOffset = viewDir * depth * 0.1;
 
     return texCoords - parallaxOffset;
 }
@@ -59,14 +56,10 @@ fn fs_main(@location(0) uv: vec2<f32>, @location(1) parallax_offset: vec2<f32>) 
     let scale = vec2<f32>(uniforms.scale_x, uniforms.scale_y);
     let sensitivity = uniforms.sensitivity;
     let center = uniforms.center;
-
-    // Read depth value at the start so we can debug it
-    let depth_value = textureSample(depth_tex, samp, uv).r;
-
-    var mask = 1.0;
-    if uniforms.use_mask > 0.5 {
-        mask = textureSample(mask_tex, samp, uv).r;
-    }
+    let enableX = uniforms.enable_x > 0.5;
+    let enableY = uniforms.enable_y > 0.5;
+    let invertX = uniforms.invert_x > 0.5;
+    let invertY = uniforms.invert_y > 0.5;
 
     var finalCoords = uv;
 
@@ -76,8 +69,29 @@ fn fs_main(@location(0) uv: vec2<f32>, @location(1) parallax_offset: vec2<f32>) 
         // Calculate direction from pixel to mouse
         let dir = uv - parallax_offset;
 
-        // Use depth value directly - pure black (0) should not move
-        let offset = dir * depth_value * scale * sensitivity * 0.15;
+        // Sample depth value
+        let depth_value = textureSample(depth_tex, samp, uv).r;
+
+        // Apply parallax offset based on depth
+        // depth = 0 (far/black) -> no movement
+        // depth = 1 (near/white) -> maximum movement
+        var offset = dir * depth_value * scale * sensitivity * 0.15;
+
+        // Apply direction masking
+        if (!enableX) {
+            offset.x = 0.0;
+        }
+        if (!enableY) {
+            offset.y = 0.0;
+        }
+
+        // Apply inversion
+        if (invertX) {
+            offset.x = -offset.x;
+        }
+        if (invertY) {
+            offset.y = -offset.y;
+        }
 
         finalCoords = uv - offset;
     } else {
@@ -101,12 +115,26 @@ fn fs_main(@location(0) uv: vec2<f32>, @location(1) parallax_offset: vec2<f32>) 
             ctrlPerspOrtho
         );
 
-        let fakeViewdir = ctrlDir * mask;
-        finalCoords = ParallaxMapping(coords_center, fakeViewdir);
+        // Apply direction masking
+        if (!enableX) {
+            ctrlDir.x = 0.0;
+        }
+        if (!enableY) {
+            ctrlDir.y = 0.0;
+        }
+
+        // Apply inversion
+        if (invertX) {
+            ctrlDir.x = -ctrlDir.x;
+        }
+        if (invertY) {
+            ctrlDir.y = -ctrlDir.y;
+        }
+
+        finalCoords = ParallaxMapping(coords_center, ctrlDir);
     }
 
     // Sample the final color at the parallax offset coordinate
-    // Original GLSL does not blend - just return the offset color directly
     let result = textureSample(tex, samp, finalCoords);
 
     return result;

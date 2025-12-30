@@ -6,13 +6,15 @@ import type { RenderPassOptions, WGSLRenderer } from 'wgsl-renderer'
 import { defineStore } from 'pinia'
 import { createIrisMovementEffect } from 'src/effects/iris-movement'
 import pinia from 'stores/index'
-import { canvasSettings, currentImage } from 'src/pages/side-bar/composibles'
+import { canvasSettings, currentEffect, currentImage } from 'src/pages/side-bar/composibles'
 import { createWaterFlowEffect } from 'src/effects/water-flow'
 import { createCloudMotionEffect } from 'src/effects/cloud-motion'
 import { createScrollEffect } from 'src/effects/scroll'
 import { createWaterWavesEffect } from 'src/effects/waterwaves'
 import { createShakeEffect } from 'src/effects/shake'
 import { createDepthParallaxEffect } from 'src/effects/depthparallax'
+import { createReflectionEffect } from 'src/effects/reflection'
+import { createTintEffect } from 'src/effects/tint'
 
 const pointer = usePointer(pinia)
 const samplerStore = useSamplerStore()
@@ -592,14 +594,12 @@ const useLayers = defineStore('layers', {
 
             // Create default black depth texture (no depth)
             const depthTexture = await this.getDefaultMaskTexture(0x000000)
-            const maskTexture = await this.getDefaultMaskTexture(0)
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
 
             const depthParallaxEffect = await createDepthParallaxEffect(`${imageLayer.crc}-effect-${c}__depthparallax`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 depthTexture: depthTexture,
-                maskTexture: maskTexture,
             })
 
             imageLayer.effects.push(depthParallaxEffect)
@@ -624,6 +624,36 @@ const useLayers = defineStore('layers', {
                 }
                 depthParallaxEffect.uniforms.apply()
             })
+        },
+
+        async addReflectionEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            const maskTexture = await this.getDefaultMaskTexture(0)
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+
+            const reflectionEffect = await createReflectionEffect(`${imageLayer.crc}-effect-${c}__reflection`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                maskTexture: maskTexture,
+            })
+
+            imageLayer.effects.push(reflectionEffect)
+        },
+
+        async addTintEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            const maskTexture = await this.getDefaultMaskTexture(0)
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+
+            const tintEffect = await createTintEffect(`${imageLayer.crc}-effect-${c}__tint`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                maskTexture: maskTexture,
+            })
+
+            imageLayer.effects.push(tintEffect)
         },
 
         async addEffect(effectName: string) {
@@ -657,6 +687,12 @@ const useLayers = defineStore('layers', {
                 case 'depthparallax':
                     await this.addDepthParallaxEffect(image)
                     break
+                case 'reflection':
+                    await this.addReflectionEffect(image)
+                    break
+                case 'tint':
+                    await this.addTintEffect(image)
+                    break
                 default: return
             }
             await this.reRender()
@@ -675,6 +711,9 @@ const useLayers = defineStore('layers', {
 
         async removeEffect(e: Effect, i: number) {
             this.byPass(e, i)
+            if (e === currentEffect.value) {
+                currentEffect.value = null
+            }
             currentImage.value?.effects.splice(i, 1)
             await this.reRender()
         },

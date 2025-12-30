@@ -1,21 +1,19 @@
 import type { PassTextureRef, WGSLRenderer } from 'wgsl-renderer'
 import pinia from 'stores/index'
 import { canvasSettings } from 'src/pages/side-bar/composibles'
-import type { PropertyList } from '.'
-import { Effect, PropertyType, createProperty, type SelectOption } from '.'
+import type { PropertyList, SelectOption } from '.'
+import { Effect, PropertyType, createProperty } from '.'
 
 const samplerStore = useSamplerStore(pinia)
-const pointer = usePointer(pinia)
 
 let shaderCode: string | null = null
 
 export async function createDepthParallaxEffect(name: string, renderer: WGSLRenderer, textures: {
     baseTexture: GPUTexture | PassTextureRef,
     depthTexture: GPUTexture,
-    maskTexture: GPUTexture,
 }) {
 
-    const dpUniforms = renderer.createUniforms(16)
+    const dpUniforms = renderer.createUniforms(14)
     dpUniforms.values[0] = canvasSettings.value.width // canvas_res.x
     dpUniforms.values[1] = canvasSettings.value.height // canvas_res.y
     dpUniforms.values[2] = 0.5 // pointer_x
@@ -24,8 +22,11 @@ export async function createDepthParallaxEffect(name: string, renderer: WGSLRend
     dpUniforms.values[5] = 1.0 // scale_y
     dpUniforms.values[6] = 1.0 // sensitivity
     dpUniforms.values[7] = 0.3 // center
-    dpUniforms.values[8] = 1.0 // quality (0=basic, 1=occlusion perf, 2=occlusion quality)
-    dpUniforms.values[9] = 0.0 // use_mask
+    dpUniforms.values[8] = 0.0 // quality (0=basic, 1=occlusion perf, 2=occlusion quality)
+    dpUniforms.values[9] = 1.0 // enable_x
+    dpUniforms.values[10] = 1.0 // enable_y
+    dpUniforms.values[11] = 0.0 // invert_x
+    dpUniforms.values[12] = 0.0 // invert_y
 
     const qualityOptions: SelectOption[] = [
         { value: 0, label: '基础' },
@@ -45,24 +46,37 @@ export async function createDepthParallaxEffect(name: string, renderer: WGSLRend
             name: 'quality',
             label: '质量',
             type: PropertyType.Select,
-            defaultValue: 1,
+            defaultValue: 0,
             uniformIndex: [8, 1],
             options: qualityOptions,
         }),
         createProperty({
-            name: 'use_mask',
-            label: '使用不透明蒙版',
+            name: 'enable_x',
+            label: '横向视差',
             type: PropertyType.Checkbox,
-            defaultValue: false,
+            defaultValue: true,
             uniformIndex: [9, 1],
         }),
         createProperty({
-            name: 'alpha_mask',
-            label: '不透明蒙版',
-            type: PropertyType.AlphaMask,
-            defaultValue: 'defaultMask-000000',
-            uniformIndex: [-2, -1],
-            condition: () => dpUniforms.values[9] === 1.0,
+            name: 'enable_y',
+            label: '纵向视差',
+            type: PropertyType.Checkbox,
+            defaultValue: true,
+            uniformIndex: [10, 1],
+        }),
+        createProperty({
+            name: 'invert_x',
+            label: '翻转横向',
+            type: PropertyType.Checkbox,
+            defaultValue: false,
+            uniformIndex: [11, 1],
+        }),
+        createProperty({
+            name: 'invert_y',
+            label: '翻转纵向',
+            type: PropertyType.Checkbox,
+            defaultValue: false,
+            uniformIndex: [12, 1],
         }),
         createProperty({
             name: 'scale',
@@ -104,7 +118,6 @@ export async function createDepthParallaxEffect(name: string, renderer: WGSLRend
         resources: [
             textures.baseTexture,
             textures.depthTexture,
-            textures.maskTexture,
             samplerStore.getSampler('linear', renderer),
             dpUniforms.getBuffer(),
         ],
