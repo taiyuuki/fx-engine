@@ -96,10 +96,10 @@ export async function createCloudMotionEffect(
         createProperty({
             name: 'direction',
             label: '云动方向',
-            type: PropertyType.Float,
-            defaultValue: 1.5,
+            type: PropertyType.Angle,
+            defaultValue: 90,
             uniformIndex: [7, 1],
-            range: [0, 6.28],
+            range: [0, 360],
         }),
     ]
 

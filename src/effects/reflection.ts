@@ -94,9 +94,9 @@ export async function createReflectionEffect(name: string, renderer: WGSLRendere
         createProperty({
             name: 'direction',
             label: '反射方向',
-            type: PropertyType.Float,
-            defaultValue: 0.0,
-            range: [0.0, 6.28],
+            type: PropertyType.Angle,
+            defaultValue: 180,
+            range: [0.0, 360],
             uniformIndex: [3, 1],
             condition: () => reflUniforms.values[2] === 0.0,
         }),

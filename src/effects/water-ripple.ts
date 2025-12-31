@@ -24,7 +24,7 @@ export async function createWaterRippleEffect(name: string, renderer: WGSLRender
 
     wrUniforms.values[5] = 0.1 // speed
     wrUniforms.values[6] = 0.2 // scroll_speed
-    wrUniforms.values[7] = 1.0 // angle
+    wrUniforms.values[7] = 180 // angle (degrees, will be converted to radians)
     wrUniforms.values[8] = 1.0 // ratio
     wrUniforms.values[9] = 0.1 // strength
     wrUniforms.values[10] = 2.0 // scale
@@ -70,9 +70,8 @@ export async function createWaterRippleEffect(name: string, renderer: WGSLRender
         createProperty({
             name: 'angle',
             label: '滚动角度',
-            type: PropertyType.Float,
-            defaultValue: 3.14,
-            range: [0.0, 6.28],
+            type: PropertyType.Angle,
+            defaultValue: 180,
             uniformIndex: [7, 1],
         }),
         createProperty({

@@ -88,9 +88,9 @@ export async function createWaterWavesEffect(name: string, renderer: WGSLRendere
         createProperty({
             name: 'direction',
             label: '波浪方向',
-            type: PropertyType.Float,
-            defaultValue: 0.0,
-            range: [0.0, 6.28],
+            type: PropertyType.Angle,
+            defaultValue: 180,
+            range: [0.0, 360],
             uniformIndex: [7, 1],
         }),
         createProperty({
@@ -132,9 +132,9 @@ export async function createWaterWavesEffect(name: string, renderer: WGSLRendere
         createProperty({
             name: 'direction2',
             label: '第二波方向',
-            type: PropertyType.Float,
-            defaultValue: 0.0,
-            range: [0.0, 6.28],
+            type: PropertyType.Angle,
+            defaultValue: 180,
+            range: [0.0, 360],
             uniformIndex: [12, 1],
             condition: () => wwUniforms.values[13] === 1.0,
         }),

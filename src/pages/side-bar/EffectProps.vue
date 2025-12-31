@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { PropertyType } from 'src/effects'
+import AngleKnob from 'src/components/AngleKnob.vue'
 import { currentEffect, propBarDisplay } from './composibles'
 import MaskMenu from './MaskMenu.vue'
 
@@ -206,6 +207,16 @@ function hexToRgb(hex: string) {
                 </template>
               </q-input>
             </div>
+          </template>
+          <template v-if="p.type === PropertyType.Angle">
+            <AngleKnob
+              :model-value="currentEffect.refs[p.name] as number"
+              :label="p.label"
+              @update:model-value="(val: number) => {
+                currentEffect!.refs[p.name] = val
+                currentEffect?.applyUniforms(p.name)
+              }"
+            />
           </template>
         </div>
       </template>

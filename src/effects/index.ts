@@ -10,6 +10,7 @@ enum PropertyType {
     Checkbox = 'checkbox',
     Array = 'array',
     Select = 'select',
+    Angle = 'angle',
 }
 
 interface PropertyValueMap {
@@ -22,6 +23,7 @@ interface PropertyValueMap {
     [PropertyType.Checkbox]: boolean;
     [PropertyType.Array]: number[];
     [PropertyType.Select]: number;
+    [PropertyType.Angle]: number;
 }
 
 type PropertyValue<T extends PropertyType> = PropertyValueMap[T]
@@ -171,6 +173,11 @@ class Effect {
                     targetUniforms.values[offset + 1] = arr[1]
                     targetUniforms.values[offset + 2] = arr[2]
                 }
+                break
+            case PropertyType.Angle:
+
+                // Convert degrees to radians
+                targetUniforms.values[offset] = (this.refs[p.name] as number) * 0.01745329252 // Math.PI / 180
                 break
             default:
                 return
