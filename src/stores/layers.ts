@@ -1,20 +1,10 @@
 import type { Effect, Uniforms } from 'src/effects'
-import { createWaterRippleEffect } from 'src/effects/water-ripple'
-import { createCursorRippleEffect } from 'src/effects/cursor-ripple'
 import { crc32 } from 'src/utils/crc'
 import type { RenderPassOptions, WGSLRenderer } from 'wgsl-renderer'
 import { defineStore } from 'pinia'
 import { createIrisMovementEffect } from 'src/effects/iris-movement'
 import pinia from 'stores/index'
 import { canvasSettings, currentEffect, currentImage } from 'src/pages/side-bar/composibles'
-import { createWaterFlowEffect } from 'src/effects/water-flow'
-import { createCloudMotionEffect } from 'src/effects/cloud-motion'
-import { createScrollEffect } from 'src/effects/scroll'
-import { createWaterWavesEffect } from 'src/effects/waterwaves'
-import { createShakeEffect } from 'src/effects/shake'
-import { createDepthParallaxEffect } from 'src/effects/depthparallax'
-import { createReflectionEffect } from 'src/effects/reflection'
-import { createTintEffect } from 'src/effects/tint'
 
 const pointer = usePointer(pinia)
 const samplerStore = useSamplerStore()
@@ -405,6 +395,7 @@ const useLayers = defineStore('layers', {
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
 
+            const { createWaterRippleEffect } = await import('src/effects/water-ripple')
             const waterRipplerEffect = await createWaterRippleEffect(`${imageLayer.crc}-effect-${c}__water-ripple`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
@@ -424,6 +415,7 @@ const useLayers = defineStore('layers', {
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
 
+            const { createWaterFlowEffect } = await import('src/effects/water-flow')
             const waterFlowEffect = await createWaterFlowEffect(`${imageLayer.crc}-effect-${c}__water-ripple`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
@@ -469,6 +461,7 @@ const useLayers = defineStore('layers', {
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
 
+            const { createCloudMotionEffect } = await import('src/effects/cloud-motion')
             const cloudMotionEffect = await createCloudMotionEffect(`${imageLayer.crc}-effect-${c}__cloud-motion`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
@@ -489,6 +482,7 @@ const useLayers = defineStore('layers', {
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
 
             const baseTexture = this.renderer.getPassTexture(prePassName)
+            const { createCursorRippleEffect } = await import('src/effects/cursor-ripple')
             const cursorRippleEffect = await createCursorRippleEffect(`${imageLayer.crc}-effect-${c}__cursor-ripple`, this.renderer as WGSLRenderer, {
                 baseTexture: baseTexture,
                 maskTexture: maskTexture,
@@ -535,6 +529,7 @@ const useLayers = defineStore('layers', {
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
 
+            const { createScrollEffect } = await import('src/effects/scroll')
             const scrollEffect = await createScrollEffect(`${imageLayer.crc}-effect-${c}__scroll`, this.renderer as WGSLRenderer, { baseTexture: this.renderer.getPassTexture(prePassName) })
 
             imageLayer.effects.push(scrollEffect)
@@ -552,6 +547,7 @@ const useLayers = defineStore('layers', {
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
 
+            const { createWaterWavesEffect } = await import('src/effects/waterwaves')
             const waterWavesEffect = await createWaterWavesEffect(`${imageLayer.crc}-effect-${c}__waterwaves`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
@@ -574,6 +570,7 @@ const useLayers = defineStore('layers', {
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
 
+            const { createShakeEffect } = await import('src/effects/shake')
             const shakeEffect = await createShakeEffect(`${imageLayer.crc}-effect-${c}__shake`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 flowMaskTexture: flowMaskTexture,
@@ -597,6 +594,7 @@ const useLayers = defineStore('layers', {
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
 
+            const { createDepthParallaxEffect } = await import('src/effects/depthparallax')
             const depthParallaxEffect = await createDepthParallaxEffect(`${imageLayer.crc}-effect-${c}__depthparallax`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 depthTexture: depthTexture,
@@ -632,7 +630,7 @@ const useLayers = defineStore('layers', {
             const maskTexture = await this.getDefaultMaskTexture(0)
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
-
+            const { createReflectionEffect } = await import('src/effects/reflection')
             const reflectionEffect = await createReflectionEffect(`${imageLayer.crc}-effect-${c}__reflection`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
@@ -648,12 +646,29 @@ const useLayers = defineStore('layers', {
             const c = imageLayer.effects.length
             const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
 
+            const { createTintEffect } = await import('src/effects/tint')
             const tintEffect = await createTintEffect(`${imageLayer.crc}-effect-${c}__tint`, this.renderer as WGSLRenderer, {
                 baseTexture: this.renderer.getPassTexture(prePassName),
                 maskTexture: maskTexture,
             })
 
             imageLayer.effects.push(tintEffect)
+        },
+
+        async addRefractionEffect(imageLayer: ImageLayer) {
+            if (!this.renderer) return
+
+            const maskTexture = await this.getDefaultMaskTexture(0)
+            const c = imageLayer.effects.length
+            const prePassName = c ? imageLayer.effects[c - 1]!.name : baseLayerPassname(imageLayer)
+
+            const { createRefractionEffect } = await import('src/effects/refraction')
+            const refractionEffect = await createRefractionEffect(`${imageLayer.crc}-effect-${c}__refraction`, this.renderer as WGSLRenderer, {
+                baseTexture: this.renderer.getPassTexture(prePassName),
+                maskTexture: maskTexture,
+            })
+
+            imageLayer.effects.push(refractionEffect)
         },
 
         async addEffect(effectName: string) {
@@ -692,6 +707,9 @@ const useLayers = defineStore('layers', {
                     break
                 case 'tint':
                     await this.addTintEffect(image)
+                    break
+                case 'refraction':
+                    await this.addRefractionEffect(image)
                     break
                 default: return
             }

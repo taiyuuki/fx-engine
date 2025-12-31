@@ -46,7 +46,7 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             name: 'useMask',
             label: '使用碰撞蒙版',
             type: PropertyType.Checkbox,
-            defaultValue: true,
+            defaultValue: false,
             uniformIndex: ['simulate', 3, 1],
         }),
         createProperty({
@@ -55,7 +55,7 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             type: PropertyType.AlphaMask,
             defaultValue: 'defaultMask-FFFFFF',
             uniformIndex: [-2, -1], // [绑定号的相反数，属性号的相反数]
-            condition: () => (simulateUniforms?.values[3] ?? 0) > 0.5,
+            condition: () => simulateUniforms?.values[3] === 1,
         }),
         createProperty({
             name: 'rippleScale',
@@ -108,7 +108,6 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
         {
             name: 'force',
             shaderCode: forceShaderCode,
-            condition: true,
             resources: [
                 forceUniforms.getBuffer(), // @group(0) @binding(0) uniforms
                 rippleTextureA.createView(), // @group(0) @binding(1) currentForceTexture
@@ -119,7 +118,6 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
         {
             name: 'simulate',
             shaderCode: simulateShaderCode,
-            condition: true,
             resources: [
                 simulateUniforms.getBuffer(), // @group(0) @binding(0) uniforms
                 rippleTextureB.createView(), // @group(0) @binding(1) forceTexture (read from force pass)
@@ -131,7 +129,6 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
         {
             name,
             shaderCode: combineShaderCode,
-            condition: true,
             resources: [
                 samplerStore.getSampler('linear', renderer), // @group(0) @binding(0) sampler
                 combineUniforms.getBuffer(), // @group(0) @binding(1) uniforms

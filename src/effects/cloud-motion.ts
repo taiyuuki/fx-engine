@@ -5,7 +5,7 @@ import { Effect, PropertyType, createProperty } from './index'
 
 let shaderCode: string | null = null
 const sampler = useSamplerStore(pinia)
-let phaseTexture: GPUTexture | null = null
+let noiseTex: GPUTexture | null = null
 
 export async function createCloudMotionEffect(
     name: string,
@@ -40,9 +40,9 @@ export async function createCloudMotionEffect(
     uniforms.apply()
 
     // Load noise texture
-    if (!phaseTexture) {
-        const { texture } = await renderer.loadImageTexture('/textures/phase.png')
-        phaseTexture = texture
+    if (!noiseTex) {
+        const { texture } = await renderer.loadImageTexture('/textures/perlin_256.png')
+        noiseTex = texture
     }
 
     const properties = [
@@ -110,7 +110,7 @@ export async function createCloudMotionEffect(
         resources: [
             textures.baseTexture,
             textures.maskTexture,
-            phaseTexture.createView(),
+            noiseTex.createView(),
             sampler.getSampler('linear', renderer),
             sampler.getSampler('repeat', renderer),
             uniforms.getBuffer(),

@@ -36,8 +36,12 @@ type Property<P extends PropertyType> = {
     label: string
     type: P
     defaultValue: PropertyValue<P>
-    uniformIndex: [number, number] | [string, number, number] // [offset, size] 或 [passName, offset, size] for multi-pass
-    range: [number, number, number?] // [min, max, step]
+
+    /** [offset, size] 或 [passName, offset, size] for multi-pass */
+    uniformIndex: [number, number] | [string, number, number] 
+
+    /** [min, max, step] */
+    range: [number, number, number?] 
     condition: boolean | ({ (): boolean })
     options?: SelectOption[] // For Select type only
 } 
@@ -142,7 +146,7 @@ class Effect {
             targetUniforms = this.uniforms
             offset = (uniformIndex as [number, number])[0]
         }
-
+        
         switch (p?.type) {
             case PropertyType.Float:
                 targetUniforms.values[offset] = this.refs[p.name] as number

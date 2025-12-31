@@ -31,7 +31,7 @@ export async function createWaterRippleEffect(name: string, renderer: WGSLRender
     wrUniforms.values[11] = 0.0 // use_mask
 
     if (!normalTexture) {
-        const { texture } = await renderer.loadImageTexture('/effects/water-ripple/normal_texture.png')
+        const { texture } = await renderer.loadImageTexture('/textures/refractnormal.png')
         normalTexture = texture
     }
 

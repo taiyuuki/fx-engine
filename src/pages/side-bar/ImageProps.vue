@@ -93,6 +93,7 @@ const effectsList = [
     { id: 'depthparallax', label: '深度视差' },
     { id: 'reflection', label: '反射' },
     { id: 'tint', label: '染色' },
+    { id: 'refraction', label: '折射' },
 ]
 
 function editEffect() {
