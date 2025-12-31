@@ -181,9 +181,9 @@ function hexToRgb(hex: string) {
                 }"
               >
                 <template #prepend>
-                  <q-icon
-                    name="colorize"
-                    class="cursor-pointer"
+                  <div
+                    class="w-6 h-6 cursor-pointer border-1 border-black"
+                    :style="{ backgroundColor: rgbToHex(currentEffect.refs[p.name] as number[]) }"
                   >
                     <q-popup-proxy
                       cover
@@ -203,7 +203,7 @@ function hexToRgb(hex: string) {
                         }"
                       />
                     </q-popup-proxy>
-                  </q-icon>
+                  </div>
                 </template>
               </q-input>
             </div>
