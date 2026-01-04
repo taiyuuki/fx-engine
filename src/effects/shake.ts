@@ -144,6 +144,7 @@ export async function createShakeEffect(name: string, renderer: WGSLRenderer, te
 
     return new Effect({
         name,
+        id: 'shake',
         label: '抖动',
         properties,
         uniforms: shakeUniforms,

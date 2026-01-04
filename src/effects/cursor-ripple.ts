@@ -141,6 +141,7 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
 
     return new Effect({
         name,
+        id: 'cursor-ripple',
         label: '光标波纹',
         properties,
         uniforms: forceUniforms,

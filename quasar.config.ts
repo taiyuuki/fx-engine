@@ -140,6 +140,7 @@ export default defineConfig(() => {
             // Quasar plugins
             plugins: [
                 'Notify',
+                'Dialog',
             ],
         },
 

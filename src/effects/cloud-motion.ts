@@ -105,6 +105,7 @@ export async function createCloudMotionEffect(
 
     const effect = new Effect({
         name,
+        id: 'cloud-motion',
         label: '云朵移动',
         shaderCode,
         resources: [

@@ -73,6 +73,7 @@ export async function createRefractionEffect(name: string, renderer: WGSLRendere
 
     const effect = new Effect({
         name,
+        id: 'refraction',
         label: '折射',
         properties,
         uniforms: refractionUniforms,

@@ -49,6 +49,7 @@ export async function createIrisMovementEffect(name: string, renderer: WGSLRende
 
     return new Effect({
         name,
+        id: 'iris-movement',
         label: '虹膜移动',
         properties,
         uniforms: imUniform,

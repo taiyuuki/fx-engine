@@ -63,6 +63,7 @@ interface MaskConfig {
 
 interface EffectOptions {
     name: string;
+    id: string; // 效果的唯一标识符
     label: string;
     properties: PropertyList;
     uniforms: Uniforms;
@@ -92,6 +93,7 @@ function createProperty<P extends PropertyType>(options: Optional<Property<P>, O
 
 class Effect {
     name: string
+    id: string
     label: string
     properties: PropertyList
     enable: boolean = true
@@ -106,6 +108,7 @@ class Effect {
 
     constructor(options: EffectOptions) {
         this.name = options.name
+        this.id = options.id
         this.label = options.label
         this.properties = options.properties
         this.uniforms = options.uniforms

@@ -4,6 +4,8 @@ import MaskCanvas from 'src/components/MaskCanvas.vue'
 import { canvasSettings, currentEffect, currentImage, maskCanvasRef, maskControls, propBarDisplay } from 'src/pages/side-bar/composibles'
 import { currentMask, maskInfo } from 'src/composibles/mask'
 import { vZoom } from 'src/directives/v-zoom'
+import { ProjectManager } from 'src/utils/projectManager'
+import { ImageLayer } from 'src/stores/layers'
 
 const $q = useQuasar()
 const layers = useLayers()
@@ -13,6 +15,140 @@ const hasLayer = computed(() => layers.imageLayers.length > 0)
 const pageStyle = computed(() => {
     return { height: `${$q.screen.height - 50}px` }
 })
+
+// ========== 项目保存/加载 ==========
+const $projectFileInput = useTemplateRef<HTMLInputElement>('projectFileInput')
+const isSaving = ref(false)
+
+// 保存项目
+async function saveProject() {
+    if (isSaving.value) return
+
+    try {
+        isSaving.value = true
+
+        // 显示保存进度提示
+        const progressNotifier = $q.notify({
+            type: 'ongoing',
+            message: '正在保存项目...',
+            caption: '正在打包资源文件，请稍候...',
+            timeout: 0, // 不自动关闭
+            position: 'top',
+            group: 'saving',
+        })
+
+        const projectName = `project_${Date.now()}`
+        await ProjectManager.exportProject(
+            layers.imageLayers as ImageLayer[],
+            layers.materials,
+            canvasSettings.value,
+            projectName,
+        )
+
+        // 关闭进度提示
+        progressNotifier()
+
+        $q.notify({
+            type: 'positive',
+            message: '项目保存成功',
+            position: 'top',
+        })
+    }
+    catch(error) {
+        console.error('保存项目失败:', error)
+        $q.notify({
+            type: 'negative',
+            message: `保存失败: ${error}`,
+            position: 'top',
+        })
+    }
+    finally {
+        isSaving.value = false
+    }
+}
+
+// 加载项目
+async function loadProjectFromFile(file: File) {
+    try {
+
+        // 如果画布未初始化，先读取项目数据创建画布
+        if (canvasSettings.value.initialized) {
+
+            // 画布已初始化，确认后加载
+            $q.dialog({
+                title: '确认加载',
+                message: '加载项目将清空当前画布，确定继续吗？',
+                cancel: true,
+                persistent: true,
+            }).onOk(async() => {
+                try {
+                    const projectData = await ProjectManager.loadFromFile(file)
+                    await layers.loadProject(projectData)
+                    $q.notify({
+                        type: 'positive',
+                        message: '项目加载成功',
+                    })
+                }
+                catch(error) {
+                    console.error('加载项目失败:', error)
+                    $q.notify({
+                        type: 'negative',
+                        message: `加载失败: ${error}`,
+                    })
+                }
+            })
+        }
+        else {
+            try {
+                const projectData = await ProjectManager.loadFromFile(file)
+
+                // 先创建画布
+                tempCanvasWidth.value = projectData.canvas.width
+                tempCanvasHeight.value = projectData.canvas.height
+                canvasSettings.value.width = projectData.canvas.width
+                canvasSettings.value.height = projectData.canvas.height
+                canvasSettings.value.initialized = true
+
+                // 等待渲染器初始化
+                await nextTick()
+                if ($renderCanvas.value && !layers.renderer) {
+                    layers.renderer = await createWGSLRenderer($renderCanvas.value)
+                }
+
+                // 再加载项目内容
+                await layers.loadProject(projectData)
+
+                $q.notify({
+                    type: 'positive',
+                    message: '项目加载成功',
+                })
+            }
+            catch(error) {
+                console.error('加载项目失败:', error)
+                $q.notify({
+                    type: 'negative',
+                    message: `加载失败: ${error}`,
+                })
+            }
+        }
+    }
+    catch(error) {
+        console.error('读取文件失败:', error)
+    }
+}
+
+function triggerProjectFileInput() {
+    $projectFileInput.value?.click()
+}
+
+async function handleProjectFileSelect(event: Event) {
+    const target = event.target as HTMLInputElement
+    const file = target.files?.[0]
+    if (file) {
+        await loadProjectFromFile(file)
+        target.value = '' // 重置 input
+    }
+}
 
 // 创建画布相关
 const showCanvasDialog = ref(false)
@@ -512,12 +648,23 @@ onMounted(() => {
       v-if="!canvasSettings.initialized"
       class="absolute inset-0 flex items-center justify-center bg-gray-100 z-50"
     >
-      <div class="text-center">
+      <div class="flex flex-col gap-4">
         <q-btn
           color="primary"
-          size="xl"
+          size="lg"
+          icon="i-mdi:plus-box"
           label="创建画布"
+          class="min-w-[200px]"
           @click="showCreateCanvasDialog"
+        />
+        <q-btn
+          color="grey-7"
+          size="lg"
+          icon="i-mdi:folder-open"
+          label="加载项目"
+          outline
+          class="min-w-[200px]"
+          @click="triggerProjectFileInput"
         />
       </div>
     </div>
@@ -746,15 +893,68 @@ onMounted(() => {
               <span class="mx-2 text-gray-400">|</span>
               <span>{{ (canvasTransform.scale * 100).toFixed(0) }}%</span>
             </div>
-            <q-btn
-              flat
-              dense
-              round
-              size="sm"
-              icon="i-mdi:close"
-              text-color="grey-400"
-              @click="controlPanelVisible = false"
-            />
+            <div class="flex gap-2">
+              <!-- 项目菜单按钮 -->
+              <q-btn-dropdown
+                color="white"
+                flat
+                dense
+                size="sm"
+                icon="i-mdi:file-document"
+                label="项目"
+                class="text-white"
+                menu-anchor="bottom left"
+                menu-self="top left"
+              >
+                <q-list
+                  dense
+                  class="bg-black"
+                >
+                  <q-item
+                    v-close-popup="!isSaving"
+                    :clickable="!isSaving"
+                    :class="isSaving ? 'text-grey-6' : 'text-white'"
+                    dense
+                    @click="saveProject"
+                  >
+                    <q-item-section avatar>
+                      <q-icon
+                        :name="isSaving ? 'i-mdi:loading' : 'i-mdi:content-save'"
+                        :class="{ 'q-icon-spin': isSaving }"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{ isSaving ? '正在保存...' : '保存项目' }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+
+                  <q-item
+                    v-close-popup
+                    clickable
+                    class="text-white"
+                    dense
+                    @click="triggerProjectFileInput"
+                  >
+                    <q-item-section avatar>
+                      <q-icon name="i-mdi:folder-open" />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>加载项目</q-item-label>
+                    </q-item-section>
+                  </q-item>
+                </q-list>
+              </q-btn-dropdown>
+
+              <q-btn
+                flat
+                dense
+                round
+                size="sm"
+                icon="i-mdi:close"
+                text-color="white"
+                @click="controlPanelVisible = false"
+              />
+            </div>
           </div>
         </div>
 
@@ -953,6 +1153,15 @@ onMounted(() => {
         </q-card-actions>
       </q-card>
     </q-dialog>
+
+    <!-- 隐藏的文件输入 - 用于加载项目 -->
+    <input
+      ref="projectFileInput"
+      type="file"
+      accept=".fx"
+      class="hidden"
+      @change="handleProjectFileSelect"
+    >
   </div>
 </template>
 
@@ -966,6 +1175,17 @@ onMounted(() => {
     linear-gradient(-45deg, transparent 75%, #e0e0e0 75%);
   background-size: 20px 20px;
   background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+}
+
+/* 项目下拉菜单样式 */
+.q-item.text-white:hover {
+  background-color: var(--q-primary);
+  color: white !important;
+}
+
+.q-item.text-white:hover .q-icon,
+.q-item.text-white:hover .q-item-label {
+  color: white !important;
 }
 
 /* 对话框样式 */

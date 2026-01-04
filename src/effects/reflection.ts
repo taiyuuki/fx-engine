@@ -156,6 +156,7 @@ export async function createReflectionEffect(name: string, renderer: WGSLRendere
 
     return new Effect({
         name,
+        id: 'reflection',
         label: '反射',
         properties,
         uniforms: reflUniforms,

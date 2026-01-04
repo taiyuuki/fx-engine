@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { Effect } from 'src/effects'
+import { EFFECTS_CONFIG } from 'src/constants/effects'
 import { currentEffect, currentImage, propBarDisplay, selectEffect } from './composibles'
 
 const effectsModal = ref(false)
@@ -80,21 +81,11 @@ async function addEffect() {
     effectsModal.value = false
 }
 
-// 效果列表
-const effectsList = [
-    { id: 'water-ripple', label: '水波纹' },
-    { id: 'iris-movement', label: '虹膜移动' },
-    { id: 'water-flow', label: '水流' },
-    { id: 'cursor-ripple', label: '游标波纹' },
-    { id: 'cloud-motion', label: '云朵移动' },
-    { id: 'scroll', label: '滚动' },
-    { id: 'waterwaves', label: '水波浪' },
-    { id: 'shake', label: '摇动' },
-    { id: 'depthparallax', label: '深度视差' },
-    { id: 'reflection', label: '反射' },
-    { id: 'tint', label: '染色' },
-    { id: 'refraction', label: '折射' },
-]
+// 使用统一的效果配置
+const effectsList = EFFECTS_CONFIG.map(e => ({
+    id: e.id,
+    label: e.label,
+}))
 
 function editEffect() {
     if (currentEffect) {

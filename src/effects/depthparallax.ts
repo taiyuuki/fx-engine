@@ -111,6 +111,7 @@ export async function createDepthParallaxEffect(name: string, renderer: WGSLRend
 
     return new Effect({
         name,
+        id: 'depthparallax',
         label: '深度视差',
         properties,
         uniforms: dpUniforms,

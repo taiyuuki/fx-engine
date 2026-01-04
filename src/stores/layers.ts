@@ -5,6 +5,7 @@ import { defineStore } from 'pinia'
 import { createIrisMovementEffect } from 'src/effects/iris-movement'
 import pinia from 'stores/index'
 import { canvasSettings, currentEffect, currentImage } from 'src/pages/side-bar/composibles'
+import type { EffectData, LayerData, MaterialData, ProjectData } from 'src/types/project'
 
 const pointer = usePointer(pinia)
 const samplerStore = useSamplerStore()
@@ -741,46 +742,262 @@ const useLayers = defineStore('layers', {
         async addEffect(effectName: string) {
             if (!currentImage.value) return
             const image = currentImage.value
-            switch (effectName) {
+            await this.createEffectById(image, effectName)
+            await this.reRender()
+        },
+
+        // ========== 项目保存/加载功能 ==========
+
+        /**
+         * 加载项目数据
+         */
+        async loadProject(projectData: ProjectData) {
+            if (!this.renderer) {
+                throw new Error('Renderer 未初始化')
+            }
+
+            const { canvasSettings: settings } = await import('src/pages/side-bar/composibles')
+
+            // 设置画布尺寸
+            settings.value.width = projectData.canvas.width
+            settings.value.height = projectData.canvas.height
+            settings.value.initialized = true
+
+            // 清空现有图层
+            this.imageLayers = []
+            this.materials.clear()
+            currentEffect.value = null
+            currentImage.value = null
+
+            // 加载材质
+            await this.loadMaterials(projectData.materials)
+
+            // 加载图层
+            for (const layerData of projectData.layers) {
+                await this.loadLayer(layerData)
+            }
+
+            await this.reRender()
+
+            // 加载完成后清空选中状态
+            currentImage.value = null
+            currentEffect.value = null
+        },
+
+        /**
+         * 加载材质数据
+         */
+        async loadMaterials(materials: Record<string, MaterialData>) {
+            for (const [name, materialData] of Object.entries(materials)) {
+                try {
+
+                    // 如果是 Blob URL 或 base64，直接加载
+                    // 否则假设是相对路径，需要处理
+                    const texture = await this.renderer!.loadImageTexture(materialData.url)
+
+                    this.materials.set(name, {
+                        url: materialData.url,
+                        texture: texture.texture,
+                        width: texture.width,
+                        height: texture.height,
+                    })
+                }
+                catch(error) {
+                    console.error(`加载材质失败: ${name}`, error)
+                }
+            }
+        },
+
+        /**
+         * 加载单个图层
+         */
+        async loadLayer(layerData: LayerData) {
+            if (!this.renderer) return
+
+            // 加载图层图片纹理
+            const textureData = await this.renderer.loadImageTexture(layerData.url)
+
+            // 创建图层
+            const imageLayer: ImageLayer = {
+                name: layerData.name,
+                url: layerData.url,
+                crc: layerData.crc,
+                size: layerData.size,
+                origin: layerData.transform.origin,
+                scale: layerData.transform.scale,
+                rotation: layerData.transform.rotation,
+                passes: [],
+                effects: [],
+            }
+
+            // 创建基础着色器 pass
+            const sampler = samplerStore.getSampler('linear', this.renderer as WGSLRenderer)
+            const imgUniforms = this.renderer.createUniforms(16)
+            const canvasWidth = layerData.size.width // 使用图片尺寸
+            const canvasHeight = layerData.size.height
+
+            const transformMatrix = buildTransformMatrix(
+                layerData.transform.origin.x,
+                layerData.transform.origin.y,
+                layerData.transform.scale.x,
+                layerData.transform.scale.y,
+                layerData.transform.rotation,
+            )
+
+            imgUniforms.values.set([
+                canvasWidth, canvasHeight, // [0-1] canvas_res
+                layerData.size.width, layerData.size.height, // [2-3] image_res
+                transformMatrix[0], transformMatrix[1], transformMatrix[2], 0,
+                transformMatrix[3], transformMatrix[4], transformMatrix[5], 0,
+                transformMatrix[6], transformMatrix[7], transformMatrix[8], 0,
+            ])
+            imgUniforms.apply()
+
+            const baseShader = await createShader('base-layer')
+            imageLayer.passes.push({
+                name: `${layerData.crc}__base-shader`,
+                shaderCode: baseShader,
+                resources: [
+                    textureData.texture,
+                    sampler,
+                    imgUniforms.getBuffer(),
+                ],
+            })
+
+            imageLayer.uniforms = imgUniforms
+            this.imageLayers.push(imageLayer)
+
+            // 加载效果
+            for (const effectData of layerData.effects) {
+                await this.loadEffect(imageLayer, effectData)
+            }
+        },
+
+        /**
+         * 加载单个效果
+         */
+        async loadEffect(layer: ImageLayer, effectData: EffectData) {
+
+            // effectData.type 现在直接是效果 id
+            const effectId = effectData.type
+
+            if (!effectId) {
+                console.error(`效果类型为空: ${effectData.type}`)
+
+                return
+            }
+
+            // 调用统一的效果创建方法
+            await this.createEffectById(layer, effectId)
+
+            // 获取刚添加的效果
+            const effect = layer.effects[layer.effects.length - 1]
+            if (!effect) return
+
+            // 设置效果启用状态
+            effect.enable = effectData.enable
+
+            // 设置属性值
+            for (const [propName, propValue] of Object.entries(effectData.properties)) {
+                const property = effect.properties.find(p => p.name === propName)
+                if (property) {
+                    effect.refs[propName] = propValue
+                    effect.applyUniforms(propName)
+                }
+            }
+
+            // 设置蒙版
+            if (effectData.masks && Object.keys(effectData.masks).length > 0) {
+
+                // 处理多 pass 效果的蒙版（通过 maskConfigs）
+                if (effect.maskConfigs) {
+                    for (const [maskName, materialName] of Object.entries(effectData.masks)) {
+                        const material = this.materials.get(materialName)
+                        const maskConfig = effect.maskConfigs[maskName]
+
+                        if (material && maskConfig) {
+                            const pass = effect.passes?.find(p => p.name === maskConfig.passName)
+                            if (pass && pass.resources) {
+                                pass.resources[maskConfig.bindingIndex] = material.texture
+                                this.renderer?.updateBindGroupSetResources(
+                                    maskConfig.passName,
+                                    'default',
+                                    pass.resources,
+                                )
+                            }
+                            effect.refs[maskName] = materialName
+                        }
+                    }
+                }
+
+                // 处理单 pass 效果的蒙版（直接设置 resources）
+                else if (effect.resources) {
+                    const { PropertyType } = await import('src/effects')
+                    for (const property of effect.properties) {
+                        const isAlphaMask = property.type === PropertyType.AlphaMask
+                        const isFlowMask = property.type === PropertyType.FlowMask
+
+                        if ((isAlphaMask || isFlowMask) && effectData.masks[property.name]) {
+                            const materialName = effectData.masks[property.name]
+                            const material = this.materials.get(materialName)
+
+                            if (material && property.uniformIndex) {
+                                const bindingIndex = -property.uniformIndex[0] // 从 -1, -2 转换为 1, 2
+                                if (bindingIndex >= 0) {
+                                    effect.setResource(bindingIndex, material.texture)
+                                    effect.refs[property.name] = materialName
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+
+        /**
+         * 根据效果 id 创建效果（统一的效果创建方法）
+         */
+        async createEffectById(layer: ImageLayer, effectId: string) {
+            switch (effectId) {
                 case 'water-ripple':
-                    await this.addWaterRippleEffect(image)
+                    await this.addWaterRippleEffect(layer)
                     break
                 case 'iris-movement':
-                    await this.addIrisMovementEffect(image)
+                    await this.addIrisMovementEffect(layer)
                     break
                 case 'water-flow':
-                    await this.addWaterFlowEffect(image)
+                    await this.addWaterFlowEffect(layer)
                     break
                 case 'cloud-motion':
-                    await this.addCloudMotionEffect(image)
+                    await this.addCloudMotionEffect(layer)
                     break
                 case 'cursor-ripple':
-                    await this.addCursorRippleEffect(image)
+                    await this.addCursorRippleEffect(layer)
                     break
                 case 'scroll':
-                    await this.addScrollEffect(image)
+                    await this.addScrollEffect(layer)
                     break
                 case 'waterwaves':
-                    await this.addWaterWavesEffect(image)
+                    await this.addWaterWavesEffect(layer)
                     break
                 case 'shake':
-                    await this.addShakeEffect(image)
+                    await this.addShakeEffect(layer)
                     break
                 case 'depthparallax':
-                    await this.addDepthParallaxEffect(image)
+                    await this.addDepthParallaxEffect(layer)
                     break
                 case 'reflection':
-                    await this.addReflectionEffect(image)
+                    await this.addReflectionEffect(layer)
                     break
                 case 'tint':
-                    await this.addTintEffect(image)
+                    await this.addTintEffect(layer)
                     break
                 case 'refraction':
-                    await this.addRefractionEffect(image)
+                    await this.addRefractionEffect(layer)
                     break
-                default: return
+                default:
+                    console.error(`未知的效果 id: ${effectId}`)
             }
-            await this.reRender()
         },
 
         // 删除效果时修改后面一个Pass的输入Pass

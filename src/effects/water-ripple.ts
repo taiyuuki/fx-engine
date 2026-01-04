@@ -107,6 +107,7 @@ export async function createWaterRippleEffect(name: string, renderer: WGSLRender
 
     return new Effect({
         name,
+        id: 'water-ripple',
         label: '水波纹',
         properties,
         uniforms: wrUniforms,

@@ -60,6 +60,7 @@ export async function createScrollEffect(
 
     const effect = new Effect({
         name,
+        id: 'scroll',
         label: '滚动',
         shaderCode,
         resources: [

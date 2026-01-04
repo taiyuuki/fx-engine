@@ -83,6 +83,7 @@ export async function createTintEffect(name: string, renderer: WGSLRenderer, tex
 
     return new Effect({
         name,
+        id: 'tint',
         label: '染色',
         properties,
         uniforms: tintUniforms,

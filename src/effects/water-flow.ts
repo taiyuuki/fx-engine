@@ -65,6 +65,7 @@ export async function createWaterFlowEffect(name: string, renderer: WGSLRenderer
 
     return new Effect({
         name,
+        id: 'water-flow',
         label: '水流',
         properties,
         uniforms: wfUniforms,
