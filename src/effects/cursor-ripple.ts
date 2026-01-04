@@ -16,7 +16,8 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
 }) {
 
     // Force pass uniforms - generates ripples from cursor movement
-    const forceUniforms = renderer.createUniforms(8)
+    // Layout: pointer(vec2) + pointerLast(vec2) + pointerDelta(f32) + rippleScale(f32) + canvasRes(vec2) + frameTime(f32) + padding
+    const forceUniforms = renderer.createUniforms(10)
 
     // Simulate pass uniforms - simulates ripple propagation
     const simulateUniforms = renderer.createUniforms(8)

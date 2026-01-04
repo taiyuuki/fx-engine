@@ -1,9 +1,10 @@
 struct Uniforms {
-    pointer: vec2<f32>,
-    pointerLast: vec2<f32>,
-    pointerDelta: f32,
-    rippleScale: f32,
-    frameTime: f32,
+    pointer: vec2<f32>,      // offset 0-1
+    pointerLast: vec2<f32>,  // offset 2-3
+    pointerDelta: f32,       // offset 4
+    rippleScale: f32,        // offset 5
+    canvasRes: vec2<f32>,    // offset 6-7
+    frameTime: f32,          // offset 8
 };
 
 // Common sampler
@@ -40,26 +41,40 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     let normalizedLDelta = lDelta / distLDelta;
     let distOnLine = dot(normalizedLDelta, texDelta);
 
-    let rayMask = max(step(0.0, distOnLine) * step(distOnLine, distLDelta), step(distLDelta, 0.1));
+    // Get pointer movement amount early (used in rayMask calculation)
+    let pointerMoveAmt = uniforms.pointerDelta;
+
+    // Smooth movement factor to avoid hard cutoffs
+    let movementFactor = smoothstep(0.0, 0.02, pointerMoveAmt);
+
+    // Generate ripples along the mouse trajectory with smooth falloff
+    let onTrajectory = step(0.0, distOnLine) * step(distOnLine, distLDelta);
+    let atMousePoint = step(distLDelta, 0.1);
+    let rayMask = max(onTrajectory, atMousePoint) * movementFactor;
 
     let clampedDistOnLine = saturate(distOnLine / distLDelta) * distLDelta;
     let posOnLine = unprojectedUVsLast + normalizedLDelta * clampedDistOnLine;
 
-    let finalUV = (uv - posOnLine) * vec2<f32>(uniforms.rippleScale, -uniforms.rippleScale);
+    // Calculate ripple scale based on canvas resolution
+    // rippleScale=1.0 means approximately 100px radius at current resolution
+    let targetPixelRadius = 200.0;
+    let scale = max(uniforms.canvasRes, vec2<f32>(1.0, 1.0)) / (targetPixelRadius * uniforms.rippleScale);
+
+    let finalUV = (uv - posOnLine) * vec2<f32>(scale.x, -scale.y);
 
     let pointerDist = length(finalUV);
     let clampedPointerDist = saturate(1.0 - pointerDist);
 
     let timeAmt = min(1.0 / 30.0, uniforms.frameTime) / 0.02;
-    let pointerMoveAmt = uniforms.pointerDelta;
 
     // Additional safety check: prevent excessive forces from sudden mouse jumps
     let safePointerMoveAmt = min(pointerMoveAmt, 5.0); // Clamp to reasonable max movement
 
-    let baseInputStrength = clampedPointerDist * timeAmt * safePointerMoveAmt * 2.5; // Increased force multiplier
+    let baseInputStrength = clampedPointerDist * timeAmt * safePointerMoveAmt * 1.0;
 
-    // Only apply force when mouse is actually moving and movement is reasonable
-    let inputStrength = baseInputStrength * step(0.01, safePointerMoveAmt);
+    // Smooth transition for very small movements to avoid hard cutoff
+    let strengthFactor = smoothstep(0.0, 0.02, safePointerMoveAmt);
+    let inputStrength = baseInputStrength * strengthFactor;
 
     let impulseDir = max(vec2<f32>(-1.0), min(vec2<f32>(1.0), finalUV));
 
