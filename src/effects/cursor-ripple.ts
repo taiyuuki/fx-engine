@@ -71,7 +71,7 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             label: '波纹速度',
             type: PropertyType.Float,
             defaultValue: 1.0,
-            uniformIndex: ['simulate', 2, 1],
+            uniformIndex: ['simulate', 0, 1],
             range: [0.0, 2.0],
         }),
         createProperty({
@@ -79,7 +79,7 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             label: '波纹衰减',
             type: PropertyType.Float,
             defaultValue: 0.98,
-            uniformIndex: ['simulate', 3, 1],
+            uniformIndex: ['simulate', 1, 1],
             range: [0.0, 4.0],
         }),
         createProperty({

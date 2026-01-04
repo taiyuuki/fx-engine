@@ -56,13 +56,13 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
 
     // Use narrow, smooth trajectory instead of wide radial falloff
     // This produces thin, crisp ripples along the movement path
-    let trajectoryWidth = 0.15; // Increased width to prevent ripples from breaking up
+    let trajectoryWidth = 0.20; // Wider for larger ripples
     let trajectoryMask = smoothstep(trajectoryWidth, 0.0, distToTrajectory);
 
     let rayMask = trajectoryMask * movementFactor;
 
     // Calculate ripple scale based on canvas resolution
-    let targetPixelRadius = 200.0;
+    let targetPixelRadius = 120.0; // Smaller radius = more concentrated ripples
     let scale = max(uniforms.canvasRes, vec2<f32>(1.0, 1.0)) / (targetPixelRadius * uniforms.rippleScale);
 
     let finalUV = (uv - posOnLine) * vec2<f32>(scale.x, -scale.y);

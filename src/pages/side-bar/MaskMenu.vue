@@ -50,38 +50,39 @@ async function applyMaskTexture(textureData: { texture: GPUTexture; url: string;
     if (!currentEffect.value || !layers.renderer) return
 
     currentMask.value = textureData
+    const maskPropertyName = maskInfo.value.refKey
 
-    if (currentEffect.value.maskConfigs) {
+    let maskName = ''
+    if (currentEffect.value.isMultiPass && maskPropertyName) {
 
-        // 多蒙版系统：使用 maskConfigs 获取配置
-        const maskConfig = currentEffect.value.getMaskConfig(props.propName)
+        // 多pass
+        const maskConfig = currentEffect.value.getMaskConfig(maskPropertyName)
+
         if (maskConfig) {
             const { passName, bindingIndex } = maskConfig
 
-            // 更新对应 pass 的资源
+            // 更新pass的资源
             const pass = currentEffect.value.passes?.find(p => p.name === passName)
             if (pass && pass.resources) {
                 pass.resources[bindingIndex] = textureData.texture
-                layers.renderer.updateBindGroupSetResources(passName, 'default', pass.resources)
-
-                // 生成蒙版名称并存储
+                layers.renderer.updateBindGroupSetResources(passName, 'default', pass?.resources || [])
                 const maskMode = maskInfo.value.flowMode ? 'flow' : 'alpha'
-                const maskName = `${currentEffect.value.name}.${passName}.${maskMode}__mask`
-                layers.materials.set(maskName, textureData)
-                currentEffect.value.refs[maskInfo.value.refKey!] = maskName
+                maskName = `${currentEffect.value.name}.${maskMode}__mask`
             }
         }
     }
     else {
 
-        // 单蒙版系统
+        // 单pass
         currentEffect.value.setResource(maskInfo.value.bindingIndex, textureData.texture)
-        const maskMode = maskInfo.value.flowMode ? 'flow' : 'alpha'
-        const maskName = `${currentEffect.value.name}.${maskMode}__mask`
-        layers.materials.set(maskName, textureData)
-        currentEffect.value.refs[maskInfo.value.refKey!] = maskName
         layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
+        const maskMode = maskInfo.value.flowMode ? 'flow' : 'alpha'
+        maskName = `${currentEffect.value.name}.${maskMode}__mask`
     }
+    layers.materials.set(maskName, currentMask.value)
+    currentEffect.value.refs[maskInfo.value.refKey!] = maskName
+
+    currentEffect.value.properties[maskInfo.value.bindingIndex].defaultValue = maskName
 }
 
 async function resolveCurrentImageMask(e: Event) {
