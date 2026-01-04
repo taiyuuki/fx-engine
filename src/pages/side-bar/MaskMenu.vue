@@ -34,7 +34,9 @@ function drawMask() {
     maskInfo.value.bindingIndex = props.bindingIndex
     maskInfo.value.propertyIndex = props.propertyIndex
     maskInfo.value.refKey = props.propertyKey
+    maskInfo.value.flowMode = props.flowMode
     maskControls.value.flowMode = props.flowMode
+
     propBarDisplay.value = 'maskProps'
 
     nextTick(() => {
@@ -43,25 +45,57 @@ function drawMask() {
     })
 }
 
-async function resolveCurrentImage(e: Event) {
+// 应用蒙版纹理的通用函数
+async function applyMaskTexture(textureData: { texture: GPUTexture; url: string; width: number; height: number }) {
+    if (!currentEffect.value || !layers.renderer) return
+
+    currentMask.value = textureData
+
+    if (currentEffect.value.maskConfigs) {
+
+        // 多蒙版系统：使用 maskConfigs 获取配置
+        const maskConfig = currentEffect.value.getMaskConfig(props.propName)
+        if (maskConfig) {
+            const { passName, bindingIndex } = maskConfig
+
+            // 更新对应 pass 的资源
+            const pass = currentEffect.value.passes?.find(p => p.name === passName)
+            if (pass && pass.resources) {
+                pass.resources[bindingIndex] = textureData.texture
+                layers.renderer.updateBindGroupSetResources(passName, 'default', pass.resources)
+
+                // 生成蒙版名称并存储
+                const maskMode = maskInfo.value.flowMode ? 'flow' : 'alpha'
+                const maskName = `${currentEffect.value.name}.${passName}.${maskMode}__mask`
+                layers.materials.set(maskName, textureData)
+                currentEffect.value.refs[maskInfo.value.refKey!] = maskName
+            }
+        }
+    }
+    else {
+
+        // 单蒙版系统
+        currentEffect.value.setResource(maskInfo.value.bindingIndex, textureData.texture)
+        const maskMode = maskInfo.value.flowMode ? 'flow' : 'alpha'
+        const maskName = `${currentEffect.value.name}.${maskMode}__mask`
+        layers.materials.set(maskName, textureData)
+        currentEffect.value.refs[maskInfo.value.refKey!] = maskName
+        layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
+    }
+}
+
+async function resolveCurrentImageMask(e: Event) {
     const t = e.target as HTMLInputElement
     const file = t.files?.[0]
     if (layers.renderer && currentEffect.value && file) {
-        {
-            const { texture, width, height } = await layers.renderer.loadImageTexture(file)
-            currentMask.value = {
-                url: URL.createObjectURL(file),
-                texture,
-                width,
-                height,
-            }
-
-            currentEffect.value.setResource(maskInfo.value.bindingIndex, texture)
-            const maskName = `${currentEffect.value.name}__mask`
-            layers.materials.set(maskName, currentMask.value)
-            currentEffect.value.refs[maskInfo.value.refKey!] = maskName
-            layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
+        const { texture, width, height } = await layers.renderer.loadImageTexture(file)
+        const textureData = {
+            url: URL.createObjectURL(file),
+            texture,
+            width,
+            height,
         }
+        await applyMaskTexture(textureData)
     }
 }
 
@@ -81,13 +115,7 @@ function confirmTextureSelection() {
     if (selectedTexture.value && layers.renderer && currentEffect.value) {
         const textureData = layers.materials.get(selectedTexture.value)
         if (textureData && textureData.texture) {
-
-            currentMask.value = textureData
-            currentEffect.value.setResource(maskInfo.value.bindingIndex, textureData.texture)
-            const maskName = `${currentEffect.value.name}__mask`
-            layers.materials.set(maskName, textureData)
-            currentEffect.value.refs[maskInfo.value.refKey!] = maskName
-            layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
+            applyMaskTexture(textureData)
         }
     }
     showTextureDialog.value = false
@@ -143,7 +171,7 @@ function cancelTextureSelection() {
                 type="file"
                 name="导入图片"
                 class="hidden"
-                @change="resolveCurrentImage"
+                @change="resolveCurrentImageMask"
               >
             </q-item-section>
           </q-item>

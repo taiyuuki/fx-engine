@@ -47,16 +47,21 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     // Smooth movement factor to avoid hard cutoffs
     let movementFactor = smoothstep(0.0, 0.02, pointerMoveAmt);
 
-    // Generate ripples along the mouse trajectory with smooth falloff
-    let onTrajectory = step(0.0, distOnLine) * step(distOnLine, distLDelta);
-    let atMousePoint = step(distLDelta, 0.1);
-    let rayMask = max(onTrajectory, atMousePoint) * movementFactor;
-
-    let clampedDistOnLine = saturate(distOnLine / distLDelta) * distLDelta;
+    // Calculate the closest point on the line segment
+    let clampedDistOnLine = clamp(distOnLine, 0.0, distLDelta);
     let posOnLine = unprojectedUVsLast + normalizedLDelta * clampedDistOnLine;
 
+    // Calculate actual distance from pixel to the closest point on trajectory
+    let distToTrajectory = length(uv - posOnLine);
+
+    // Use narrow, smooth trajectory instead of wide radial falloff
+    // This produces thin, crisp ripples along the movement path
+    let trajectoryWidth = 0.15; // Increased width to prevent ripples from breaking up
+    let trajectoryMask = smoothstep(trajectoryWidth, 0.0, distToTrajectory);
+
+    let rayMask = trajectoryMask * movementFactor;
+
     // Calculate ripple scale based on canvas resolution
-    // rippleScale=1.0 means approximately 100px radius at current resolution
     let targetPixelRadius = 200.0;
     let scale = max(uniforms.canvasRes, vec2<f32>(1.0, 1.0)) / (targetPixelRadius * uniforms.rippleScale);
 
@@ -70,7 +75,7 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     // Additional safety check: prevent excessive forces from sudden mouse jumps
     let safePointerMoveAmt = min(pointerMoveAmt, 5.0); // Clamp to reasonable max movement
 
-    let baseInputStrength = clampedPointerDist * timeAmt * safePointerMoveAmt * 1.0;
+    let baseInputStrength = clampedPointerDist * timeAmt * safePointerMoveAmt * 1.0; // Back to original strength
 
     // Smooth transition for very small movements to avoid hard cutoff
     let strengthFactor = smoothstep(0.0, 0.02, safePointerMoveAmt);

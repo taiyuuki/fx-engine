@@ -438,7 +438,6 @@ async function handleMaskUpdate(dataUrl: string) {
 
         const maskPropertyName = maskInfo.value.refKey
 
-        // console.log(maskPropertyName)
         let maskName = ''
         if (currentEffect.value.isMultiPass && maskPropertyName) {
 
@@ -453,7 +452,8 @@ async function handleMaskUpdate(dataUrl: string) {
                 if (pass && pass.resources) {
                     pass.resources[bindingIndex] = texture
                     layers.renderer.updateBindGroupSetResources(passName, 'default', pass?.resources || [])
-                    maskName = `${currentEffect.value.name}.${passName}__mask`
+                    const maskMode = maskInfo.value.flowMode ? 'flow' : 'alpha'
+                    maskName = `${currentEffect.value.name}.${maskMode}__mask`
                 }
             }
         }
@@ -462,11 +462,13 @@ async function handleMaskUpdate(dataUrl: string) {
             // 单pass
             currentEffect.value.setResource(maskInfo.value.bindingIndex, texture)
             layers.renderer.updateBindGroupSetResources(currentEffect.value.name, 'default', currentEffect.value!.resources!)
-            maskName = `${currentEffect.value.name}__mask`
+            const maskMode = maskInfo.value.flowMode ? 'flow' : 'alpha'
+            maskName = `${currentEffect.value.name}.${maskMode}__mask`
         }
-
         layers.materials.set(maskName, currentMask.value)
         currentEffect.value.refs[maskInfo.value.refKey!] = maskName
+
+        currentEffect.value.properties[maskInfo.value.bindingIndex].defaultValue = maskName
     }
 }
 

@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ImageLayer } from 'src/stores/layers'
 import { canvasSettings, currentImage, propBarDisplay, selectImage } from './composibles'
 
 const $inputImage = useTemplateRef<HTMLInputElement>('inputImage')
@@ -53,7 +54,7 @@ async function removeImageLayer(i: number) {
         :active="currentImage === image"
         class="image-item"
         :class="{ 'image-item-active': currentImage === image }"
-        @click="selectImage(image)"
+        @click="selectImage(image as ImageLayer)"
       >
         <q-item-section avatar>
           <q-avatar>

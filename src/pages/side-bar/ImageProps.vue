@@ -89,7 +89,7 @@ const effectsList = [
     { id: 'cloud-motion', label: '云朵移动' },
     { id: 'scroll', label: '滚动' },
     { id: 'waterwaves', label: '水波浪' },
-    { id: 'shake', label: '抖动' },
+    { id: 'shake', label: '摇动' },
     { id: 'depthparallax', label: '深度视差' },
     { id: 'reflection', label: '反射' },
     { id: 'tint', label: '染色' },

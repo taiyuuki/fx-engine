@@ -23,7 +23,7 @@ export async function createShakeEffect(name: string, renderer: WGSLRenderer, te
     shakeUniforms.values[5] = 0.0 // bounds_min
     shakeUniforms.values[6] = 1.0 // bounds_max
     shakeUniforms.values[7] = 0.0 // use_noise
-    shakeUniforms.values[8] = 0.0 // use_flow_mask
+    shakeUniforms.values[8] = 1.0 // use_flow_mask
     shakeUniforms.values[9] = 0.0 // use_opacity_mask
     shakeUniforms.values[10] = 0.0 // use_time_offset
     shakeUniforms.values[11] = 0.0 // direction (0=center, 1=left, 2=right)
@@ -34,7 +34,50 @@ export async function createShakeEffect(name: string, renderer: WGSLRenderer, te
             label: '噪声模式',
             type: PropertyType.Checkbox,
             defaultValue: false,
-            uniformIndex: [6, 1],
+            uniformIndex: [7, 1],
+        }),
+        
+        createProperty({
+            name: 'use_flow_mask',
+            label: '使用流向蒙版',
+            type: PropertyType.Checkbox,
+            defaultValue: true,
+            uniformIndex: [8, 1],
+        }),
+        createProperty({
+            name: 'flow_mask',
+            label: '流向蒙版',
+            type: PropertyType.FlowMask,
+            defaultValue: 'defaultMask-7F7F00',
+            uniformIndex: [-1, -7],
+            condition: () => shakeUniforms.values[8] === 1.0,
+        }),
+        createProperty({
+            name: 'use_opacity_mask',
+            label: '使用不透明蒙版',
+            type: PropertyType.Checkbox,
+            defaultValue: false,
+            uniformIndex: [9, 1],
+        }),
+        createProperty({
+            name: 'opacity_mask',
+            label: '不透明蒙版',
+            type: PropertyType.AlphaMask,
+            defaultValue: 'defaultMask-000000',
+            uniformIndex: [-3, -10],
+            condition: () => shakeUniforms.values[9] === 1.0,
+        }),
+        createProperty({
+            name: 'direction',
+            label: '抖动方向',
+            type: PropertyType.Select,
+            defaultValue: 0,
+            uniformIndex: [11, 1],
+            options: [
+                { value: 0, label: '居中' },
+                { value: 1, label: '左' },
+                { value: 2, label: '右' },
+            ],
         }),
         createProperty({
             name: 'speed',
@@ -76,70 +119,22 @@ export async function createShakeEffect(name: string, renderer: WGSLRenderer, te
             range: [0.1, 1.0],
             uniformIndex: [6, 1],
         }),
-        createProperty({
-            name: 'use_flow_mask',
-            label: '使用流向蒙版',
-            type: PropertyType.Checkbox,
-            defaultValue: false,
-            uniformIndex: [8, 1],
-        }),
-        createProperty({
-            name: 'flow_mask',
-            label: '流向蒙版',
-            type: PropertyType.FlowMask,
-            defaultValue: 'defaultMask-7F7F00',
-            uniformIndex: [-1, -1],
-            condition: () => shakeUniforms.values[8] === 1.0,
-        }),
-        createProperty({
-            name: 'use_noise',
-            label: '噪声模式',
-            type: PropertyType.Checkbox,
-            defaultValue: false,
-            uniformIndex: [7, 1],
-        }),
-        createProperty({
-            name: 'use_time_offset',
-            label: '使用时间偏移蒙版',
-            type: PropertyType.Checkbox,
-            defaultValue: false,
-            uniformIndex: [10, 1],
-        }),
-        createProperty({
-            name: 'time_offset_mask',
-            label: '时间偏移蒙版',
-            type: PropertyType.AlphaMask,
-            defaultValue: 'defaultMask-000000',
-            uniformIndex: [-1, -1],
-            condition: () => shakeUniforms.values[10] === 1.0,
-        }),
-        createProperty({
-            name: 'use_opacity_mask',
-            label: '使用不透明蒙版',
-            type: PropertyType.Checkbox,
-            defaultValue: false,
-            uniformIndex: [9, 1],
-        }),
-        createProperty({
-            name: 'opacity_mask',
-            label: '不透明蒙版',
-            type: PropertyType.AlphaMask,
-            defaultValue: 'defaultMask-000000',
-            uniformIndex: [-1, -1],
-            condition: () => shakeUniforms.values[9] === 1.0,
-        }),
-        createProperty({
-            name: 'direction',
-            label: '抖动方向',
-            type: PropertyType.Select,
-            defaultValue: 0,
-            uniformIndex: [11, 1],
-            options: [
-                { value: 0, label: '居中' },
-                { value: 1, label: '左' },
-                { value: 2, label: '右' },
-            ],
-        }),
+
+        // createProperty({
+        //     name: 'use_time_offset',
+        //     label: '使用时间偏移蒙版',
+        //     type: PropertyType.Checkbox,
+        //     defaultValue: false,
+        //     uniformIndex: [10, 1],
+        // }),
+        // createProperty({
+        //     name: 'time_offset_mask',
+        //     label: '时间偏移蒙版',
+        //     type: PropertyType.AlphaMask,
+        //     defaultValue: 'defaultMask-000000',
+        //     uniformIndex: [-1, -1],
+        //     condition: () => shakeUniforms.values[10] === 1.0,
+        // }),
     ]
 
     if (!shaderCode) {
