@@ -19,8 +19,9 @@ const pageStyle = computed(() => {
 
 // ========== 项目保存/加载 ==========
 const $projectFileInput = useTemplateRef<HTMLInputElement>('projectFileInput')
-const $projectMenu = useTemplateRef<{ hide: () => void }>('projectMenu')
+const $projectMenu = useTemplateRef<{ hide(): void }>('projectMenu')
 const isSaving = ref(false)
+const isLoading = ref(false)
 
 // 保存项目
 async function saveProject() {
@@ -37,6 +38,8 @@ async function saveProject() {
             timeout: 0, // 不自动关闭
             position: 'top',
             group: 'saving',
+            color: 'primary',
+            textColor: 'white',
         })
 
         // 生成可读的项目文件名
@@ -79,7 +82,10 @@ async function saveProject() {
 
 // 加载项目
 async function loadProjectFromFile(file: File) {
+    if (isLoading.value) return
     try {
+
+        isLoading.value = true
 
         // 如果画布未初始化，先读取项目数据创建画布
         if (canvasSettings.value.initialized) {
@@ -91,11 +97,22 @@ async function loadProjectFromFile(file: File) {
                 cancel: true,
                 persistent: true,
             }).onOk(async() => {
+                const progressNotifier = $q.notify({
+                    type: 'ongoing',
+                    message: '正在加载项目...',
+                    caption: '正在加载资源并渲染，请稍候...',
+                    timeout: 0, // 不自动关闭
+                    position: 'top',
+                    group: 'saving',
+                    color: 'primary',
+                    textColor: 'white',
+                })
                 try {
                     const projectData = await ProjectManager.loadFromFile(file)
                     await layers.loadProject(projectData)
                     $q.notify({
                         type: 'positive',
+                        position: 'top',
                         message: '项目加载成功',
                     })
                 }
@@ -103,8 +120,13 @@ async function loadProjectFromFile(file: File) {
                     console.error('加载项目失败:', error)
                     $q.notify({
                         type: 'negative',
+                        position: 'top',
                         message: `加载失败: ${error}`,
                     })
+                }
+                finally {
+                    progressNotifier()
+                    isLoading.value = false
                 }
             })
         }
