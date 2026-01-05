@@ -399,6 +399,8 @@ function resetTransform() {
 
 .dialog-content {
   padding: 20px 24px;
+  max-height: 50vh;
+  overflow-y: auto;
 }
 
 .dialog-actions {

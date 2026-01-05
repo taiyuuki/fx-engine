@@ -52,8 +52,8 @@ export const EFFECTS_CONFIG: EffectConfig[] = [
     },
     {
         id: 'shake',
-        label: '抖动',
-        chineseLabels: ['抖动'],
+        label: '摇动',
+        chineseLabels: ['摇动'],
     },
     {
         id: 'tint',
@@ -67,8 +67,8 @@ export const EFFECTS_CONFIG: EffectConfig[] = [
     },
     {
         id: 'waterwaves',
-        label: '水波浪',
-        chineseLabels: ['水波浪', '水波'],
+        label: '波浪',
+        chineseLabels: ['波浪', '水波'],
     },
     {
         id: 'water-flow',

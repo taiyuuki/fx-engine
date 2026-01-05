@@ -184,10 +184,10 @@ const useLayers = defineStore('layers', {
                     renderToCanvas: !hasEffects,
                     ...layer.passes[0]!,
                     clearColor: {
-                        r: 1,
-                        g: 1,
-                        b: 1, 
-                        a: 1,
+                        r: 0,
+                        g: 0,
+                        b: 0,
+                        a: 0,
                     },
                 })
 
@@ -887,7 +887,6 @@ const useLayers = defineStore('layers', {
                 return
             }
 
-            // 调用统一的效果创建方法
             await this.createEffectById(layer, effectId)
 
             // 获取刚添加的效果
@@ -919,11 +918,6 @@ const useLayers = defineStore('layers', {
                             const pass = effect.passes?.find(p => p.name === maskConfig.passName)
                             if (pass && pass.resources) {
                                 pass.resources[maskConfig.bindingIndex] = material.texture
-                                this.renderer?.updateBindGroupSetResources(
-                                    maskConfig.passName,
-                                    'default',
-                                    pass.resources,
-                                )
                             }
                             effect.refs[maskName] = materialName
                         }

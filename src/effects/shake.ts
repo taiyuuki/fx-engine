@@ -69,7 +69,7 @@ export async function createShakeEffect(name: string, renderer: WGSLRenderer, te
         }),
         createProperty({
             name: 'direction',
-            label: '抖动方向',
+            label: '摇动方向',
             type: PropertyType.Select,
             defaultValue: 0,
             uniformIndex: [11, 1],
@@ -81,7 +81,7 @@ export async function createShakeEffect(name: string, renderer: WGSLRenderer, te
         }),
         createProperty({
             name: 'speed',
-            label: '抖动速度',
+            label: '摇动速度',
             type: PropertyType.Float,
             defaultValue: 1.0,
             range: [0.0, 10.0],
@@ -89,7 +89,7 @@ export async function createShakeEffect(name: string, renderer: WGSLRenderer, te
         }),
         createProperty({
             name: 'amp',
-            label: '抖动强度',
+            label: '摇动强度',
             type: PropertyType.Float,
             defaultValue: 0.1,
             range: [0.01, 0.5],
@@ -105,7 +105,7 @@ export async function createShakeEffect(name: string, renderer: WGSLRenderer, te
         }),
         createProperty({
             name: 'bounds_min',
-            label: '抖动下限',
+            label: '摇动下限',
             type: PropertyType.Float,
             defaultValue: 0.0,
             range: [0.0, 0.9],
@@ -113,7 +113,7 @@ export async function createShakeEffect(name: string, renderer: WGSLRenderer, te
         }),
         createProperty({
             name: 'bounds_max',
-            label: '抖动上限',
+            label: '摇动上限',
             type: PropertyType.Float,
             defaultValue: 1.0,
             range: [0.1, 1.0],
@@ -145,7 +145,7 @@ export async function createShakeEffect(name: string, renderer: WGSLRenderer, te
     return new Effect({
         name,
         id: 'shake',
-        label: '抖动',
+        label: '摇动',
         properties,
         uniforms: shakeUniforms,
         shaderCode,

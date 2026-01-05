@@ -1,10 +1,11 @@
 <script setup lang="ts">
-import { createWGSLRenderer } from 'wgsl-renderer'
+import { WGSLRenderer, createWGSLRenderer } from 'wgsl-renderer'
 import MaskCanvas from 'src/components/MaskCanvas.vue'
 import { canvasSettings, currentEffect, currentImage, maskCanvasRef, maskControls, propBarDisplay } from 'src/pages/side-bar/composibles'
 import { currentMask, maskInfo } from 'src/composibles/mask'
 import { vZoom } from 'src/directives/v-zoom'
 import { ProjectManager } from 'src/utils/projectManager'
+import { VideoExporterWebCodecs } from 'src/utils/videoExporterWebCodecs'
 import { ImageLayer } from 'src/stores/layers'
 
 const $q = useQuasar()
@@ -174,6 +175,93 @@ async function createCanvas() {
 }
 
 const $renderCanvas = useTemplateRef<HTMLCanvasElement>('renderCanvas')
+
+// ========== 视频导出 ==========
+const isExportingVideo = ref(false)
+const exportProgress = ref(0)
+const exportProgressDialogVisible = ref(false)
+
+// 视频导出设置
+const videoSettings = reactive({
+    fps: 30,
+    duration: 5,
+})
+
+// 导出对话框显示状态
+const exportDialogVisible = ref(false)
+
+// 显示导出对话框
+function showExportDialog() {
+    exportDialogVisible.value = true
+}
+
+// 确认导出
+function confirmExport() {
+    exportDialogVisible.value = false
+    startVideoExport()
+}
+
+// 开始视频导出
+async function startVideoExport() {
+    if (!layers.renderer) return
+
+    try {
+        isExportingVideo.value = true
+        exportProgress.value = 0
+        exportProgressDialogVisible.value = true
+
+        // 获取画布尺寸
+        const width = canvasSettings.value.width
+        const height = canvasSettings.value.height
+
+        // 创建导出器
+        const exporter = new VideoExporterWebCodecs(layers.renderer as WGSLRenderer, width, height)
+
+        // 开始录制
+        await exporter.start({
+            fps: videoSettings.fps,
+            duration: videoSettings.duration,
+            onProgress: progress => {
+                exportProgress.value = progress * 100
+            },
+            updateFrameCallbacks: layers.updateFrame,
+        })
+
+        // 停止录制并获取视频
+        const blob = await exporter.stop()
+
+        exportProgressDialogVisible.value = false
+        isExportingVideo.value = false
+
+        // 下载视频
+        const filename = `video_${Date.now()}.webm`
+        VideoExporterWebCodecs.download(blob, filename)
+
+        $q.notify({
+            type: 'positive',
+            message: '视频导出成功',
+            caption: `已保存为 ${filename}`,
+            position: 'top',
+        })
+    }
+    catch(error) {
+        console.error('导出视频失败:', error)
+        $q.notify({
+            type: 'negative',
+            message: `导出失败: ${error}`,
+            position: 'top',
+        })
+    }
+    finally {
+        isExportingVideo.value = false
+        exportProgress.value = 0
+
+        // 重新启动渲染循环
+        layers.renderer?.loopRender(t => {
+            layers.updateFrame.forEach(f => f(t))
+        })
+    }
+}
 
 // 画布视图变换
 const canvasTransform = reactive({
@@ -942,6 +1030,26 @@ onMounted(() => {
                       <q-item-label>加载项目</q-item-label>
                     </q-item-section>
                   </q-item>
+
+                  <q-separator class="bg-gray-600/30 my-1" />
+
+                  <q-item
+                    v-close-popup="!isExportingVideo"
+                    :clickable="!isExportingVideo"
+                    :class="isExportingVideo ? 'text-grey-6' : 'text-white'"
+                    dense
+                    @click="showExportDialog"
+                  >
+                    <q-item-section avatar>
+                      <q-icon
+                        :name="isExportingVideo ? 'i-mdi:loading' : 'i-mdi:video'"
+                        :class="{ 'q-icon-spin': isExportingVideo }"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{ isExportingVideo ? '正在导出...' : '导出视频' }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
                 </q-list>
               </q-btn-dropdown>
 
@@ -1162,6 +1270,116 @@ onMounted(() => {
       class="hidden"
       @change="handleProjectFileSelect"
     >
+
+    <!-- 导出视频对话框 -->
+    <q-dialog v-model="exportDialogVisible">
+      <q-card class="dialog-card">
+        <q-card-section class="dialog-header">
+          <div class="text-h6 text-white">
+            导出视频
+          </div>
+          <q-btn
+            v-close-popup
+            flat
+            round
+            dense
+            icon="close"
+            class="text-white"
+          />
+        </q-card-section>
+
+        <q-card-section class="dialog-content">
+          <div class="q-gutter-md">
+            <!-- FPS 选择 -->
+            <div class="text-body2 text-gray-700 dark:text-gray-300">
+              帧率 (FPS)
+            </div>
+            <div class="q-gutter-sm">
+              <q-radio
+                v-model="videoSettings.fps"
+                :val="30"
+                label="30 FPS"
+                color="primary"
+                dense
+              />
+              <q-radio
+                v-model="videoSettings.fps"
+                :val="60"
+                label="60 FPS"
+                color="primary"
+                dense
+              />
+            </div>
+
+            <!-- 时长选择 -->
+            <div class="text-body2 text-gray-700 dark:text-gray-300 q-mt-md">
+              时长 (秒)
+            </div>
+            <q-slider
+              v-model="videoSettings.duration"
+              :min="1"
+              :max="60"
+              :step="1"
+              label
+              label-always
+              color="primary"
+            />
+            <div class="text-caption text-gray-500">
+              当前设置: {{ videoSettings.fps }} FPS × {{ videoSettings.duration }}秒 = {{ videoSettings.fps * videoSettings.duration }} 帧
+            </div>
+          </div>
+        </q-card-section>
+
+        <q-card-actions class="dialog-actions">
+          <q-btn
+            v-close-popup
+            flat
+            label="取消"
+            class="action-btn"
+          />
+          <q-btn
+            color="primary"
+            label="开始导出"
+            unelevated
+            class="action-btn"
+            @click="confirmExport"
+          />
+        </q-card-actions>
+      </q-card>
+    </q-dialog>
+
+    <!-- 导出进度对话框 -->
+    <q-dialog
+      v-model="exportProgressDialogVisible"
+      persistent
+    >
+      <q-card
+        class="dialog-card"
+        style="min-width: 350px"
+      >
+        <q-card-section class="dialog-header">
+          <div class="text-h6 text-white">
+            正在导出视频...
+          </div>
+        </q-card-section>
+
+        <q-card-section class="dialog-content">
+          <div class="q-gutter-md">
+            <q-linear-progress
+              :value="exportProgress / 100"
+              color="primary"
+              size="8px"
+            />
+            <div class="text-center text-body2">
+              {{ exportProgress.toFixed(0) }}%
+            </div>
+            <div class="text-caption text-gray-500 text-center">
+              请稍候，正在渲染并编码视频...
+            </div>
+          </div>
+        </q-card-section>
+      </q-card>
+    </q-dialog>
   </div>
 </template>
 
@@ -1191,7 +1409,9 @@ onMounted(() => {
 /* 对话框样式 */
 .dialog-card {
   width: 600px;
+  max-width: 90vw;
   border-radius: 2px;
+  overflow: hidden;
 }
 
 .dialog-header {
@@ -1204,6 +1424,7 @@ onMounted(() => {
 
 .dialog-content {
   padding: 20px 24px;
+  overflow-x: hidden;
 }
 
 .dialog-actions {
