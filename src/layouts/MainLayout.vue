@@ -1,10 +1,13 @@
 <script setup lang="ts">
+import { canvasSettings } from 'src/pages/side-bar/composibles'
 import SideBar from 'src/pages/SideBar.vue'
 
 const extraTabs = ref<{
     title: string
     name: string
 }[]>([])
+
+const drawerWidth = computed(() => canvasSettings.value.initialized ? 600 : 0)
 </script>
 
 <template>
@@ -31,11 +34,11 @@ const extraTabs = ref<{
     </q-header>
 
     <q-drawer
-      :v-model="true"
+      :v-model="canvasSettings.initialized"
       show-if-above
       side="right"
       bordered
-      :width="600"
+      :width="drawerWidth"
     >
       <SideBar />
     </q-drawer>

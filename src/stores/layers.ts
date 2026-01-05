@@ -879,10 +879,10 @@ const useLayers = defineStore('layers', {
         async loadEffect(layer: ImageLayer, effectData: EffectData) {
 
             // effectData.type 现在直接是效果 id
-            const effectId = effectData.type
+            const effectId = effectData.id
 
             if (!effectId) {
-                console.error(`效果类型为空: ${effectData.type}`)
+                console.error(`效果类型为空: ${effectData.id}`)
 
                 return
             }
@@ -892,6 +892,9 @@ const useLayers = defineStore('layers', {
             // 获取刚添加的效果
             const effect = layer.effects[layer.effects.length - 1]
             if (!effect) return
+
+            // 设置效果label
+            effect.label = effectData.label
 
             // 设置效果启用状态
             effect.enable = effectData.enable

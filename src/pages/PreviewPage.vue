@@ -19,6 +19,7 @@ const pageStyle = computed(() => {
 
 // ========== 项目保存/加载 ==========
 const $projectFileInput = useTemplateRef<HTMLInputElement>('projectFileInput')
+const $projectMenu = useTemplateRef<{ hide: () => void }>('projectMenu')
 const isSaving = ref(false)
 
 // 保存项目
@@ -38,7 +39,12 @@ async function saveProject() {
             group: 'saving',
         })
 
-        const projectName = `project_${Date.now()}`
+        // 生成可读的项目文件名
+        const now = new Date()
+        const dateStr = now.toISOString().slice(0, 10) // 2025-01-05
+        const timeStr = now.toTimeString().slice(0, 8)
+            .replace(/:/g, '-') // 14-30-45
+        const projectName = `project_${dateStr}_${timeStr}`
         await ProjectManager.exportProject(
             layers.imageLayers as ImageLayer[],
             layers.materials,
@@ -48,6 +54,9 @@ async function saveProject() {
 
         // 关闭进度提示
         progressNotifier()
+
+        // 关闭项目下拉菜单
+        $projectMenu.value?.hide()
 
         $q.notify({
             type: 'positive',
@@ -984,6 +993,7 @@ onMounted(() => {
             <div class="flex gap-2">
               <!-- 项目菜单按钮 -->
               <q-btn-dropdown
+                ref="projectMenu"
                 color="white"
                 flat
                 dense

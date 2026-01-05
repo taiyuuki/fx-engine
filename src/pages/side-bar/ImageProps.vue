@@ -114,69 +114,85 @@ function resetTransform() {
   <h4 class="text-sm text-center p-0 m-3">
     图层
   </h4>
-  <q-img
-    v-if="currentImage"
-    :src="currentImage.url"
-    spinner-color="white"
-    class="h-[140px] max-w-full px-2 block"
-  />
-  <div class="my-2 w-full">
-    <q-btn-group
-      class="w-full p-1"
-      flat
-    >
-      <q-btn
-        label="新增"
-        icon="add"
-        color="primary"
-        class="flex-1"
-        @click="effectsModal = true"
-      />
-      <q-btn
-        label="编辑"
-        icon="edit"
-        color="primary"
-        class="flex-1"
-        :disable="!currentEffect"
-        @click="editEffect"
-      />
-    </q-btn-group>
-  </div>
-  <q-list
-    bordered
-    separator
-    dense
-    class="p-1 h-[150px] overflow-auto"
+  <template v-if="currentImage">
+    <q-img
+      :src="currentImage.url"
+      spinner-color="white"
+      class="h-[140px] max-w-full px-2 block"
+    />
+    <q-input
+      v-model="currentImage.name"
+      label="图层名称"
+      outlined
+      dense
+      class="my-2"
+    />
+  </template>
+  <div
+    class="mt-4 rounded-lg"
   >
-    <q-item
-      v-for="(e, i) in currentImage?.effects"
-      :key="e.name"
-      :active="currentEffect?.name === e.name"
-      active-class="bg-primary text-white"
-      class="cursor-auto select-none"
-      clickable
-      @click="selectEffect(e)"
-    >
-      <div class="flex-1 flex items-center">
-        {{ e.label }}
-      </div>
+    <h5 class="text-sm px-3 pt-1 font-semibold">
+      效果
+    </h5>
 
-      <div class="w-fit flex items-center gap-3">
-        <!-- <div
-            class="w-5 h-5 text-gray-500 hover:text-inherit"
-            :class="{
-              'i-mdi:eye-outline': e.enable,
-              'i-mdi:eye-off-outline': !e.enable,
-            }"
-            @click="switchEnable(e, i)"
-          /> -->
-        <div
-          class="i-mdi:trash-can-outline w-5 h-5 text-gray-500 hover:text-inherit"
-          @click="removeEffect(e, i)"
+    <div class="w-full">
+      <q-btn-group
+        class="w-full p-1"
+        flat
+      >
+        <q-btn
+          label="新增"
+          icon="add"
+          color="primary"
+          class="flex-1"
+          @click="effectsModal = true"
         />
-      </div>
-    </q-item>
-  </q-list>
+        <q-btn
+          label="编辑"
+          icon="edit"
+          color="primary"
+          class="flex-1"
+          :disable="!currentEffect"
+          @click="editEffect"
+        />
+      </q-btn-group>
+    </div>
+    <q-list
+      bordered
+      separator
+      dense
+      class="p-1 h-[150px] overflow-auto"
+    >
+      <q-item
+        v-for="(e, i) in currentImage?.effects"
+        :key="e.name"
+        :active="currentEffect?.name === e.name"
+        active-class="bg-primary text-white"
+        class="cursor-auto select-none"
+        clickable
+        @click="selectEffect(e)"
+      >
+        <div class="flex-1 flex items-center">
+          {{ e.label }}
+        </div>
+  
+        <div class="w-fit flex items-center gap-3">
+          <!-- <div
+              class="w-5 h-5 text-gray-500 hover:text-inherit"
+              :class="{
+                'i-mdi:eye-outline': e.enable,
+                'i-mdi:eye-off-outline': !e.enable,
+              }"
+              @click="switchEnable(e, i)"
+            /> -->
+          <div
+            class="i-mdi:trash-can-outline w-5 h-5 text-gray-500 hover:text-inherit"
+            @click="removeEffect(e, i)"
+          />
+        </div>
+      </q-item>
+    </q-list>
+  </div>
 
   <!-- 图片变换控制 -->
   <div

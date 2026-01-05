@@ -34,8 +34,9 @@ export interface LayerData {
 }
 
 export interface EffectData {
+    id: string,
     name: string
-    type: string
+    label: string
     enable: boolean
     properties: Record<string, any>
     masks?: Record<string, string> // key: 蒙版属性名, value: 材质名称

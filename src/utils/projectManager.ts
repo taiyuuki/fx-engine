@@ -198,7 +198,8 @@ export class ProjectManager {
     private static serializeEffect(effect: Effect): EffectData {
         const effectData: EffectData = {
             name: effect.name,
-            type: effect.label,
+            id: effect.id,
+            label: effect.label,
             enable: effect.enable,
             properties: {},
             masks: {},
@@ -232,7 +233,7 @@ export class ProjectManager {
         }
 
         // 直接使用效果 id
-        effectData.type = effect.id
+        effectData.id = effect.id
 
         return effectData
     }

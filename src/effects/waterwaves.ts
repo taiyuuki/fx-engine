@@ -148,7 +148,7 @@ export async function createWaterWavesEffect(name: string, renderer: WGSLRendere
     return new Effect({
         name,
         id: 'waterwaves',
-        label: '水波浪',
+        label: '波浪',
         properties,
         uniforms: wwUniforms,
         shaderCode,

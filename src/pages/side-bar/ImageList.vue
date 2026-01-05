@@ -68,7 +68,7 @@ async function removeImageLayer(i: number) {
 
         <q-item-section>
           <q-item-label lines="1">
-            <span>图层 {{ index + 1 }}</span>
+            <span>{{ image.name }}</span>
           </q-item-label>
           <q-item-label caption>
             尺寸: {{ image.size.width }} × {{ image.size.height }}

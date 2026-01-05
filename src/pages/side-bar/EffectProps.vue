@@ -54,6 +54,12 @@ function hexToRgb(hex: string) {
       />
     </q-breadcrumbs>
     <template v-if="currentEffect">
+      <q-input
+        v-model="currentEffect.label"
+        label="效果名称"
+        outlined
+        dense
+      />
       <template
         v-for="(p, i) in currentEffect?.properties"
         :key="p.name"
