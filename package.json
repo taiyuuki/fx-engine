@@ -15,6 +15,7 @@
   },
   "dependencies": {
     "@quasar/extras": "^1.17.0",
+    "jszip": "^3.10.1",
     "pinia": "^3.0.4",
     "quasar": "^2.18.6",
     "vue": "^3.5.26",
@@ -33,7 +34,6 @@
     "autoprefixer": "^10.4.23",
     "eslint": "^9.39.2",
     "jiti": "^2.6.1",
-    "jszip": "^3.10.1",
     "typescript": "^5.9.3",
     "unocss": "^66.5.10",
     "unplugin-auto-import": "^20.3.0",

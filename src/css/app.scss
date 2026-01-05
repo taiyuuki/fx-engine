@@ -2,7 +2,7 @@
 :root {
     *::-webkit-scrollbar{
         width: 10px;
-        background-color: #F5F5F5; /*滚动区域背景颜色*/
+        background-color: transparent; /*滚动区域背景颜色*/
     }
 
     *::-webkit-scrollbar-thumb{

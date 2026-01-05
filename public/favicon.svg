@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- 背景圆 -->
+  <rect width="128" height="128" rx="24" fill="#1565C0"/>
+
+  <!-- 主体字母 FX -->
+  <text x="64" y="88" font-family="Arial, sans-serif" font-size="72" font-weight="bold" text-anchor="middle" fill="#ffffff">FX</text>
+
+  <!-- 特效光晕元素 -->
+  <!-- 左上角闪光 -->
+  <circle cx="28" cy="32" r="4" fill="#64B5F6" opacity="0.9"/>
+  <line x1="28" y1="22" x2="28" y2="16" stroke="#64B5F6" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+  <line x1="18" y1="32" x2="12" y2="32" stroke="#64B5F6" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+  <line x1="20" y1="24" x2="16" y2="20" stroke="#64B5F6" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+  <line x1="36" y1="24" x2="40" y2="20" stroke="#64B5F6" stroke-width="3" stroke-linecap="round" opacity="0.9"/>
+
+  <!-- 右下角闪光 -->
+  <circle cx="100" cy="96" r="3" fill="#64B5F6" opacity="0.8"/>
+  <line x1="100" y1="88" x2="100" y2="84" stroke="#64B5F6" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+  <line x1="92" y1="96" x2="88" y2="96" stroke="#64B5F6" stroke-width="2" stroke-linecap="round" opacity="0.8"/>
+
+  <!-- 波纹效果 -->
+  <ellipse cx="96" cy="36" rx="8" ry="8" fill="none" stroke="#64B5F6" stroke-width="2" opacity="0.6"/>
+  <ellipse cx="96" cy="36" rx="14" ry="14" fill="none" stroke="#64B5F6" stroke-width="1.5" opacity="0.4"/>
+  <ellipse cx="96" cy="36" rx="20" ry="20" fill="none" stroke="#64B5F6" stroke-width="1" opacity="0.2"/>
+</svg>
