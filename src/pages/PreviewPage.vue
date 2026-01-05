@@ -126,7 +126,6 @@ async function loadProjectFromFile(file: File) {
                 }
                 finally {
                     progressNotifier()
-                    isLoading.value = false
                 }
             })
         }
@@ -166,6 +165,9 @@ async function loadProjectFromFile(file: File) {
     }
     catch(error) {
         console.error('读取文件失败:', error)
+    }
+    finally {
+        isLoading.value = false
     }
 }
 
