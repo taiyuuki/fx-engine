@@ -1,15 +1,16 @@
 struct Uniforms {
-    pointer: vec2<f32>,      // offset 0-1
-    pointerLast: vec2<f32>,  // offset 2-3
-    pointerDelta: f32,       // offset 4
-    rippleScale: f32,        // offset 5
-    canvasRes: vec2<f32>,    // offset 6-7
-    frameTime: f32,          // offset 8
+    resolution: vec2<f32>,
+    pointer: vec2<f32>,
+    pointer_last: vec2<f32>,
+    pointer_state: f32,
+    ripple_scale: f32,
+    frame_time: f32,
 };
 
 // Common sampler
 @group(0) @binding(0) var<uniform> uniforms : Uniforms;
 @group(0) @binding(1) var currentForceTexture : texture_2d<f32>;
+@group(0) @binding(2) var samp : sampler;
 
 // Vertex shader outputs
 struct VSOut {
@@ -22,73 +23,67 @@ fn vs_main(@location(0) p: vec3<f32>) -> VSOut {
     var o: VSOut;
     o.pos = vec4<f32>(p, 1.0);
     o.uv = p.xy * 0.5 + vec2<f32>(0.5, 0.5);
+    o.uv.y = 1.0 - o.uv.y;
     return o;
 }
 
 @fragment
 fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
-    let currentTexSize = vec2<f32>(textureDimensions(currentForceTexture));
-    let maxCurrentCoord = currentTexSize - 1.0;
-    let albedo = textureLoad(currentForceTexture, vec2<i32>(clamp(uv * currentTexSize, vec2<f32>(0.0), maxCurrentCoord)), 0);
 
-    let unprojectedUVs = uniforms.pointer;
-    let unprojectedUVsLast = uniforms.pointerLast;
+    let albedo = textureSample(currentForceTexture, samp, uv);
 
-    let lDelta = unprojectedUVs - unprojectedUVsLast;
-    let texDelta = uv - unprojectedUVsLast;
+    let pointer = uniforms.pointer * 2.0 - 1.0;
+    let pointer_last = uniforms.pointer_last * 2.0 - 1.0;
 
-    let distLDelta = length(lDelta) + 0.0001;
-    let normalizedLDelta = lDelta / distLDelta;
-    let distOnLine = dot(normalizedLDelta, texDelta);
+    var pointer_uv = pointer.xy;
+    var pointer_uv_last = pointer_last.xy;  // 修复：应该用 pointer_last 而不是 pointer
 
-    // Get pointer movement amount early (used in rayMask calculation)
-    let pointerMoveAmt = uniforms.pointerDelta;
+    pointer_uv *= 0.5;
+    pointer_uv_last *= 0.5;
 
-    // Smooth movement factor to avoid hard cutoffs
-    let movementFactor = smoothstep(0.0, 0.02, pointerMoveAmt);
+    var ratio = uniforms.resolution.y / -uniforms.resolution.x;
 
-    // Calculate the closest point on the line segment
-    let clampedDistOnLine = clamp(distOnLine, 0.0, distLDelta);
-    let posOnLine = unprojectedUVsLast + normalizedLDelta * clampedDistOnLine;
+    var pointer_delta = vec2<f32>(length(pointer - pointer_last), 60.0 / max(0.0001, uniforms.ripple_scale));
+    pointer_delta.x *= 100.0;
 
-    // Calculate actual distance from pixel to the closest point on trajectory
-    let distToTrajectory = length(uv - posOnLine);
+    ratio *= -pointer_delta.y;
 
-    // Use narrow, smooth trajectory instead of wide radial falloff
-    // This produces thin, crisp ripples along the movement path
-    let trajectoryWidth = 0.20; // Wider for larger ripples
-    let trajectoryMask = smoothstep(trajectoryWidth, 0.0, distToTrajectory);
+    pointer_uv += 0.5;
+    pointer_uv_last += 0.5;
+    pointer_uv.y = pointer_uv.y;
+    pointer_uv_last.y = pointer_uv_last.y;
 
-    let rayMask = trajectoryMask * movementFactor;
+    let mask = 1.0;
 
-    // Calculate ripple scale based on canvas resolution
-    let targetPixelRadius = 120.0; // Smaller radius = more concentrated ripples
-    let scale = max(uniforms.canvasRes, vec2<f32>(1.0, 1.0)) / (targetPixelRadius * uniforms.rippleScale);
+    var l_delta = pointer_uv - pointer_uv_last;
+    let tex_delta = uv - pointer_uv_last;
 
-    let finalUV = (uv - posOnLine) * vec2<f32>(scale.x, -scale.y);
+    let dist_l_delta = length(l_delta) + 0.0001;
+    l_delta /= dist_l_delta;
+    var dist_on_line = dot(l_delta, tex_delta);
 
-    let pointerDist = length(finalUV);
-    let clampedPointerDist = saturate(1.0 - pointerDist);
+    let ray_mask = max(step(0.0, dist_on_line) * step(dist_on_line, dist_l_delta), step(dist_l_delta, 0.1));
+    dist_on_line = clamp(dist_on_line / dist_l_delta, 0.0, 1.0) * dist_l_delta;
+    let pos_on_line = pointer_uv_last + l_delta * dist_on_line;
 
-    let timeAmt = min(1.0 / 30.0, uniforms.frameTime) / 0.02;
+    pointer_uv = (uv - pos_on_line) * vec2<f32>(pointer_delta.y, ratio);
 
-    // Additional safety check: prevent excessive forces from sudden mouse jumps
-    let safePointerMoveAmt = min(pointerMoveAmt, 5.0); // Clamp to reasonable max movement
+    var point_dist = length(pointer_uv);
+    point_dist = clamp(1.0 - point_dist, 0.0, 1.0);
+    point_dist *= ray_mask * mask;
 
-    let baseInputStrength = clampedPointerDist * timeAmt * safePointerMoveAmt * 1.0; // Back to original strength
+    let time_amt = min(1.0 / 30.0, uniforms.frame_time) / 0.02;
+    let point_move_amt = pointer_delta.x;
+    let input_strength = point_dist * time_amt * (point_move_amt + uniforms.pointer_state * 5.0);
 
-    // Smooth transition for very small movements to avoid hard cutoff
-    let strengthFactor = smoothstep(0.0, 0.02, safePointerMoveAmt);
-    let inputStrength = baseInputStrength * strengthFactor;
+    let impulse_dir = max(vec2<f32>(-1.0), min(vec2<f32>(1.0), pointer_uv));
 
-    let impulseDir = max(vec2<f32>(-1.0), min(vec2<f32>(1.0), finalUV));
-
-    let colorAdd = vec4<f32>(
-        step(0.0, impulseDir.x) * impulseDir.x * inputStrength,
-        step(0.0, impulseDir.y) * impulseDir.y * inputStrength,
-        step(impulseDir.x, 0.0) * -impulseDir.x * inputStrength,
-        step(impulseDir.y, 0.0) * -impulseDir.y * inputStrength
+    let color_add = vec4<f32>(
+        step(0.0, impulse_dir.x) * impulse_dir.x * input_strength,
+        step(0.0, impulse_dir.y) * impulse_dir.y * input_strength,
+        step(impulse_dir.x, 0.0) * -impulse_dir.x * input_strength,
+        step(impulse_dir.y, 0.0) * -impulse_dir.y * input_strength
     );
 
-    return albedo + colorAdd * rayMask;
+    return albedo + color_add;
 }

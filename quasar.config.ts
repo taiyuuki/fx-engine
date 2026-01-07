@@ -200,10 +200,7 @@ export default defineConfig(() => {
         },
 
         // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-cordova-apps/configuring-cordova
-        cordova: {
-
-            // noIosLegacyBuildFlag: true, // uncomment only if you know what you are doing
-        },
+        cordova: { },
 
         // Full list of options: https://v2.quasar.dev/quasar-cli-vite/developing-capacitor-apps/configuring-capacitor
         capacitor: { hideSplashscreen: true },
@@ -224,19 +221,7 @@ export default defineConfig(() => {
 
             bundler: 'packager', // 'packager' or 'builder'
 
-            packager: {
-
-                // https://github.com/electron-userland/electron-packager/blob/master/docs/api.md#options
-
-                // OS X / Mac App Store
-                // appBundleId: '',
-                // appCategoryType: '',
-                // osxSign: '',
-                // protocol: 'myapp://path',
-
-                // Windows only
-                // win32metadata: { ... }
-            },
+            packager: {},
 
             builder: {
 

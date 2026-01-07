@@ -1,5 +1,5 @@
 struct Uniforms {
-    rippleStrength: f32,
+    ripple_strength: f32,
 };
 
 struct VSOut {
@@ -23,21 +23,16 @@ fn vs_main(@location(0) p: vec3<f32>) -> VSOut {
 
 @fragment
 fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
-    let rippleCoords = uv;
 
-    let rippleTexSize = vec2<f32>(textureDimensions(rippleTexture));
-    let maxRippleCoord = rippleTexSize - 1.0;
+    var albedo = textureSample(rippleTexture, samp, uv);
+    albedo *= albedo;
 
-    let albedo = textureLoad(rippleTexture, vec2<i32>(clamp(rippleCoords * rippleTexSize, vec2<f32>(0.0), maxRippleCoord)), 0);
-    let albedoSquared = albedo * albedo;
+    let dir = vec2<f32>(albedo.x - albedo.z, albedo.y - albedo.w);
 
-    let dir = vec2<f32>(albedoSquared.x - albedoSquared.z, albedoSquared.y - albedoSquared.w);
+    let distort_amt = uniforms.ripple_strength * 0.1;
+    var offset = dir;
+    offset *= -0.1 * distort_amt;
 
-    let distortAmt = uniforms.rippleStrength;
-    let offset = dir * (-0.1 * distortAmt);
-
-    let finalCoords = clamp(uv + offset, vec2<f32>(0.0), vec2<f32>(1.0));
-    let screen = textureSample(sourceTexture, samp, finalCoords);
-
+    var screen = textureSample(sourceTexture, samp, uv + offset);
     return screen;
 }

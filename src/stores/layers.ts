@@ -491,21 +491,21 @@ const useLayers = defineStore('layers', {
 
             imageLayer.effects.push(cursorRippleEffect)
 
+            let lastTime = performance.now()
+
+            let isInitialized = false
+            let wasOutOfBounds = true // Start with true to prevent initial ripple
             // Initialize canvas resolution immediately after creation
             const canvasWidth = canvasSettings.value.width
             const canvasHeight = canvasSettings.value.height
-            cursorRippleEffect.passUniforms.force!.values[6] = canvasWidth
-            cursorRippleEffect.passUniforms.force!.values[7] = canvasHeight
-            cursorRippleEffect.passUniforms.force?.apply()
+            
+            cursorRippleEffect.passUniforms.force!.values[0] = canvasWidth
+            cursorRippleEffect.passUniforms.force!.values[1] = canvasHeight
+            cursorRippleEffect.passUniforms.force!.apply()
 
-            let lastTime = performance.now()
-
-            // Track position ourselves since pointer.lx/ly may not update when mouse stops
-            let trackedLastX = pointer.x
-            let trackedLastY = pointer.y
-            let isInitialized = false
-            let wasOutOfBounds = true // Start with true to prevent initial ripple
-
+            cursorRippleEffect.passUniforms.simulate!.values[0] = canvasWidth
+            cursorRippleEffect.passUniforms.simulate!.values[1] = canvasHeight
+            cursorRippleEffect.passUniforms.simulate!.apply()
             this.updateFrame.push(t => {
 
                 const frameTime = Math.min(0.1, (t - lastTime) * 0.001)
@@ -514,9 +514,6 @@ const useLayers = defineStore('layers', {
                 // Calculate actual pointer delta using our tracked position
                 const currentX = pointer.x
                 const currentY = pointer.y
-
-                // Calculate delta based on tracked last position
-                const rawDelta = Math.sqrt(Math.pow(currentX - trackedLastX, 2) + Math.pow(currentY - trackedLastY, 2))
 
                 // Detect position jump (mouse entering canvas or large sudden movement)
                 const isOutOfBounds = currentX < 0 || currentY < 0
@@ -531,56 +528,28 @@ const useLayers = defineStore('layers', {
                     wasOutOfBounds = false
                 }
 
-                // Threshold for considering mouse stopped (very small movement)
-                const stoppedThreshold = 0.0005 // ~0.05% of screen, or ~1px on 1920px
-                const isStopped = rawDelta < stoppedThreshold
-
-                let finalPointerDelta: number
                 let finalLastX: number
                 let finalLastY: number
 
                 if (isJump || isOutOfBounds || justEntered) {
 
                     // On jump, out of bounds, or just entered: don't generate ripples
-                    finalPointerDelta = 0
                     finalLastX = currentX >= 0 ? currentX : 0
                     finalLastY = currentY >= 0 ? currentY : 0
-                    trackedLastX = finalLastX
-                    trackedLastY = finalLastY
                     isInitialized = true
                 }
-                else if (isStopped) {
-
-                    // Mouse stopped: don't generate ripples, reset tracking
-                    finalPointerDelta = 0
-                    finalLastX = currentX
-                    finalLastY = currentY
-                    trackedLastX = currentX
-                    trackedLastY = currentY
-                }
                 else {
-
+                    
                     // Normal movement: use full trajectory for continuous ripples
-                    finalPointerDelta = rawDelta * 100
-                    finalLastX = trackedLastX
-                    finalLastY = trackedLastY
-                    trackedLastX = currentX
-                    trackedLastY = currentY
+                    finalLastX = pointer.lx
+                    finalLastY = pointer.ly
                 }
 
-                // Get canvas resolution
-                const canvasWidth = canvasSettings.value.width
-                const canvasHeight = canvasSettings.value.height
-
-                // Update dynamic mouse-related values only
-                // Layout: [0-1]pointer, [2-3]pointerLast, [4]pointerDelta, [5]rippleScale, [6-7]canvasRes, [8]frameTime
-                cursorRippleEffect.passUniforms.force!.values[0] = currentX
-                cursorRippleEffect.passUniforms.force!.values[1] = currentY
-                cursorRippleEffect.passUniforms.force!.values[2] = finalLastX
-                cursorRippleEffect.passUniforms.force!.values[3] = finalLastY
-                cursorRippleEffect.passUniforms.force!.values[4] = finalPointerDelta
-                cursorRippleEffect.passUniforms.force!.values[6] = canvasWidth
-                cursorRippleEffect.passUniforms.force!.values[7] = canvasHeight
+                cursorRippleEffect.passUniforms.force!.values[2] = currentX
+                cursorRippleEffect.passUniforms.force!.values[3] = currentY
+                cursorRippleEffect.passUniforms.force!.values[4] = finalLastX
+                cursorRippleEffect.passUniforms.force!.values[5] = finalLastY
+                cursorRippleEffect.passUniforms.force!.values[6] = 0.0 // pointer_state
                 cursorRippleEffect.passUniforms.force!.values[8] = frameTime
 
                 cursorRippleEffect.passUniforms.simulate!.values[4] = frameTime // frameTime at offset 4
@@ -588,6 +557,14 @@ const useLayers = defineStore('layers', {
                 cursorRippleEffect.passUniforms.force?.apply()
                 cursorRippleEffect.passUniforms.simulate?.apply()
                 cursorRippleEffect.passUniforms.combine?.apply()
+
+                // 关键：在 uniform 应用后立即更新 lx/ly
+                // 这确保下一帧使用正确的"上一帧位置"，避免重复生成同一段波纹
+                // 即使 mousemove 事件频率低于帧率，也能保持轨迹连续
+                if (currentX >= 0 && currentY >= 0) {
+                    pointer.lx = currentX
+                    pointer.ly = currentY
+                }
             })
         },
 

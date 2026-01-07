@@ -17,7 +17,7 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
 
     // Force pass uniforms - generates ripples from cursor movement
     // Layout: pointer(vec2) + pointerLast(vec2) + pointerDelta(f32) + rippleScale(f32) + canvasRes(vec2) + frameTime(f32) + padding
-    const forceUniforms = renderer.createUniforms(10)
+    const forceUniforms = renderer.createUniforms(12)
 
     // Simulate pass uniforms - simulates ripple propagation
     const simulateUniforms = renderer.createUniforms(8)
@@ -48,7 +48,7 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             label: '使用碰撞蒙版',
             type: PropertyType.Checkbox,
             defaultValue: false,
-            uniformIndex: ['simulate', 3, 1],
+            uniformIndex: ['simulate', 5, 1],
         }),
         createProperty({
             name: 'alpha_mask',
@@ -56,31 +56,31 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             type: PropertyType.AlphaMask,
             defaultValue: 'defaultMask-FFFFFF',
             uniformIndex: [-2, -1], // [绑定号的相反数，属性号的相反数]
-            condition: () => simulateUniforms?.values[3] === 1,
+            condition: () => simulateUniforms?.values[5] === 1,
         }),
         createProperty({
             name: 'rippleScale',
             label: '波纹大小',
             type: PropertyType.Float,
             defaultValue: 1.0,
-            uniformIndex: ['force', 5, 1],
-            range: [0.0, 2.0],
+            uniformIndex: ['force', 7, 1],
+            range: [0.0, 4.0],
         }),
         createProperty({
             name: 'rippleSpeed',
             label: '波纹速度',
             type: PropertyType.Float,
             defaultValue: 1.0,
-            uniformIndex: ['simulate', 0, 1],
-            range: [0.0, 2.0],
+            uniformIndex: ['simulate', 2, 1],
+            range: [0.1, 4.0],
         }),
         createProperty({
             name: 'rippleDecay',
             label: '波纹衰减',
             type: PropertyType.Float,
-            defaultValue: 0.98,
-            uniformIndex: ['simulate', 1, 1],
-            range: [0.0, 4.0],
+            defaultValue: 1.0,
+            uniformIndex: ['simulate', 3, 1],
+            range: [0.1, 4.0],
         }),
         createProperty({
             name: 'rippleStrength',
@@ -88,7 +88,7 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             type: PropertyType.Float,
             defaultValue: 1.0,
             uniformIndex: ['combine', 0, 1],
-            range: [0.0, 5.0],
+            range: [0.0, 4.0],
         }),
     ]
 
@@ -112,10 +112,12 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             resources: [
                 forceUniforms.getBuffer(), // @group(0) @binding(0) uniforms
                 rippleTextureA.createView(), // @group(0) @binding(1) currentForceTexture
+                samplerStore.getSampler('nearest', renderer), // @group(0) @binding(2) var samp : sampler;
             ],
             view: rippleTextureB.createView(),
             format: FORMAT,
         },
+
         {
             name: 'simulate',
             shaderCode: simulateShaderCode,
@@ -123,10 +125,12 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
                 simulateUniforms.getBuffer(), // @group(0) @binding(0) uniforms
                 rippleTextureB.createView(), // @group(0) @binding(1) forceTexture (read from force pass)
                 textures.maskTexture, // @group(0) @binding(2) maskTexture
+                samplerStore.getSampler('nearest', renderer),
             ],
             view: rippleTextureA.createView(),
             format: FORMAT,
         },
+
         {
             name,
             shaderCode: combineShaderCode,
@@ -137,6 +141,40 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
                 rippleTextureA.createView(), // @group(0) @binding(3) rippleTexture (read simulation result)
             ],
         },
+
+        // debug
+        //         {
+        //             name,
+        //             shaderCode: `
+        // @group(0) @binding(0) var tex : texture_2d<f32>;
+        // @group(0) @binding(1) var samp : sampler;
+
+        // struct VSOut {
+        //     @builtin(position) pos: vec4<f32>,
+        //     @location(0) uv: vec2<f32>,
+        // };
+
+        // @vertex
+        // fn vs_main(@location(0) p: vec3<f32>) -> VSOut {
+        //     var o: VSOut;
+        //     o.pos = vec4<f32>(p, 1.0);
+        //     o.uv = p.xy * 0.5 + vec2<f32>(0.5, 0.5);
+        //     o.uv.y = 1.0 - o.uv.y;
+        //     return o;
+        // }
+
+        // @fragment
+        // fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
+
+        //     return textureSample(tex, samp, uv);
+        // }
+            
+        //             `,
+        //             resources: [
+        //                 rippleTextureA.createView(),
+        //                 samplerStore.getSampler('linear', renderer),
+        //             ],
+        //         },
     ]
 
     return new Effect({
