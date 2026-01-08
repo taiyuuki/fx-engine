@@ -322,6 +322,7 @@ const useLayers = defineStore('layers', {
             const imageLayer = this.imageLayers.splice(i, 1)[0]
             if (imageLayer === currentImage.value) {
                 currentImage.value = null
+                currentEffect.value = null
             }
             await this.reRender()
         },
@@ -754,6 +755,7 @@ const useLayers = defineStore('layers', {
             // 清空现有图层
             this.imageLayers = []
             this.materials.clear()
+            this.updateFrame.clear()
             currentEffect.value = null
             currentImage.value = null
 

@@ -99,12 +99,18 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     }
 
     // 更改衰减计算方式
-    let damping = 1.0 - (uniforms.ripple_decay * uniforms.frame_time);
+    var damping = 1.0 - (uniforms.ripple_decay * uniforms.frame_time);
     force *= max(0.95, damping);
 
     if uniforms.use_mask > 0.5 {
-        let inv_mask_center = step(0.01, textureSample(mask_texture, samp, uv).r);
-        force *= inv_mask_center;
+        let mask_value = textureSample(mask_texture, samp, uv).r;
+
+        if mask_value < 0.01 {
+            force = vec4<f32>(0.0, 0.0, 0.0, 0.0);
+        } else if mask_value < 1.0 {
+            let mask_factor = pow(mask_value, 0.1);
+            force *= mask_factor;
+        }
     }
 
     return force;
