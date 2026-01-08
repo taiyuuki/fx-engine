@@ -4,6 +4,7 @@ struct Uniforms {
     ripple_decay: f32,
     frame_time: f32,
     use_mask: f32,
+    use_reflection: f32,
 };
 
 // Vertex shader outputs
@@ -43,6 +44,19 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
     let inside_ripple = ripple_offset * 1.61;
     let outside_ripple = ripple_offset;
 
+    // 边界反射检测（REFLECTION 选项）
+    var reflect_up = 0.0;
+    var reflect_down = 0.0;
+    var reflect_left = 0.0;
+    var reflect_right = 0.0;
+
+    if uniforms.use_reflection > 0.5 {
+        reflect_up = step(1.0 - sim_texel.y, uv.y);
+        reflect_down = step(uv.y, sim_texel.y);
+        reflect_left = step(1.0 - sim_texel.x, uv.x);
+        reflect_right = step(uv.x, sim_texel.x);
+    }
+
     let uc = textureSample(force_texture, samp, uv + vec2<f32>(0.0, -inside_ripple.y));
     let u00 = textureSample(force_texture, samp, uv + vec2<f32>(-outside_ripple.x, -outside_ripple.y));
     let u10 = textureSample(force_texture, samp, uv + vec2<f32>(outside_ripple.x, -outside_ripple.y));
@@ -73,11 +87,19 @@ fn fs_main(@location(0) uv: vec2<f32>) -> @location(0) vec4<f32> {
         up.y + down.z + right.z,
         down.w + left.w + right.w) * component_scale;
 
-    // 应用衰减
-    // force *= drop;
+    // 应用边界反射（REFLECTION 选项）
+    if uniforms.use_reflection > 0.5 {
+        let force_copy = force;
+        let reflection_scale = 1.0;
+
+        force.y = mix(force.y, force_copy.w * reflection_scale, reflect_down);
+        force.w = mix(force.w, force_copy.y * reflection_scale, reflect_up);
+        force.x = mix(force.x, force_copy.z * reflection_scale, reflect_right);
+        force.z = mix(force.z, force_copy.x * reflection_scale, reflect_left);
+    }
 
     // 更改衰减计算方式
-    let damping = 1.0 - (0.02 * uniforms.ripple_decay * (uniforms.frame_time / 0.02));
+    let damping = 1.0 - (uniforms.ripple_decay * uniforms.frame_time);
     force *= max(0.95, damping);
 
     if uniforms.use_mask > 0.5 {

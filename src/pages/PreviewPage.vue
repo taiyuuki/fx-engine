@@ -296,6 +296,22 @@ async function startVideoExport() {
     }
 }
 
+// ========== HTML导出 ==========
+const isExportingHTML = ref(false)
+
+// 导出HTML
+async function exportHTML() {
+    if (!layers.renderer) return
+    const projectName = 'download'
+ 
+    await ProjectManager.exportHTML(
+        layers.imageLayers as ImageLayer[],
+        layers.materials,
+        canvasSettings.value,
+        projectName,
+    )
+}
+
 // 画布视图变换
 const canvasTransform = reactive({
     scale: 1,
@@ -1082,6 +1098,26 @@ onMounted(() => {
                     </q-item-section>
                     <q-item-section>
                       <q-item-label>{{ isExportingVideo ? '正在导出...' : '导出视频' }}</q-item-label>
+                    </q-item-section>
+                  </q-item>
+
+                  <!-- TODO: 导出HTML -->
+                  <q-item
+                    v-if="false"
+                    v-close-popup="!isExportingHTML"
+                    :clickable="!isExportingHTML"
+                    :class="isExportingHTML ? 'text-grey-6' : 'text-white'"
+                    dense
+                    @click="exportHTML"
+                  >
+                    <q-item-section avatar>
+                      <q-icon
+                        :name="isExportingHTML ? 'i-mdi:loading' : 'i-mdi:language-html5'"
+                        :class="{ 'q-icon-spin': isExportingHTML }"
+                      />
+                    </q-item-section>
+                    <q-item-section>
+                      <q-item-label>{{ isExportingHTML ? '正在导出...' : '导出HTML' }}</q-item-label>
                     </q-item-section>
                   </q-item>
                 </q-list>

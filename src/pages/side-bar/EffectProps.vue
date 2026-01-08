@@ -4,6 +4,44 @@ import AngleKnob from 'src/components/AngleKnob.vue'
 import { currentEffect, propBarDisplay } from './composibles'
 import MaskMenu from './MaskMenu.vue'
 
+// 恢复所有属性到默认值（蒙版除外）
+function resetToDefaults() {
+    if (!currentEffect.value) return
+
+    const props = currentEffect.value.properties
+
+    for (const prop of props) {
+
+        // 跳过蒙版类型
+        if (prop.type === PropertyType.AlphaMask || prop.type === PropertyType.FlowMask) {
+            continue
+        }
+
+        // 恢复默认值
+        switch (prop.type) {
+            case PropertyType.Float:
+            case PropertyType.Checkbox:
+            case PropertyType.Select:
+            case PropertyType.Angle:
+                currentEffect.value.refs[prop.name] = prop.defaultValue as number
+                break
+            case PropertyType.Vec2:
+            case PropertyType.Color:
+
+                // Vec2 和 Color 的 defaultValue 是数组
+                const defaultArray = prop.defaultValue as number[]
+                const currentArray = currentEffect.value.refs[prop.name] as number[]
+                for (let i = 0; i < defaultArray.length; i++) {
+                    currentArray[i] = defaultArray[i]
+                }
+                break
+        }
+
+        // 应用更改到 uniform
+        currentEffect.value.applyUniforms(prop.name)
+    }
+}
+
 function rgbToHex(rgb: number[]): string {
     const toHex = (n: number) => {
         const hex = Math.round(n * 255).toString(16)
@@ -29,30 +67,43 @@ function hexToRgb(hex: string) {
   <q-form
     class="p-5"
   >
-    <q-breadcrumbs
-      active-color="primary"
-      class="mb-5"
-    >
-      <template #separator>
-        <q-icon
-          size="1.2em"
-          name="arrow_forward"
-          color="primary"
-        />
-      </template>
+    <div class="flex items-center justify-between mb-4">
+      <q-breadcrumbs
+        active-color="primary"
+      >
+        <template #separator>
+          <q-icon
+            size="1.2em"
+            name="arrow_forward"
+            color="primary"
+          />
+        </template>
 
-      <q-breadcrumbs-el
-        label="图层"
-        icon="layers"
-        class="cursor-pointer select-none"
-        @click="propBarDisplay = 'imageProps'"
-      />
-      <q-breadcrumbs-el
-        label="效果"
-        icon="widgets"
-        class="select-none"
-      />
-    </q-breadcrumbs>
+        <q-breadcrumbs-el
+          label="图层"
+          icon="layers"
+          class="cursor-pointer select-none"
+          @click="propBarDisplay = 'imageProps'"
+        />
+        <q-breadcrumbs-el
+          label="效果"
+          icon="widgets"
+          class="select-none"
+        />
+      </q-breadcrumbs>
+      <q-btn
+        v-if="currentEffect"
+        flat
+        dense
+        color="primary"
+        icon="restart_alt"
+        label="恢复默认"
+        size="sm"
+        @click="resetToDefaults"
+      >
+        <q-tooltip>恢复属性到默认值</q-tooltip>
+      </q-btn>
+    </div>
     <template v-if="currentEffect">
       <q-input
         v-model="currentEffect.label"

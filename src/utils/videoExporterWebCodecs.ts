@@ -10,7 +10,7 @@ export interface ExportOptionsWebCodecs {
     fps: number
     duration: number // 秒
     onProgress?: { (progress: number): void }
-    updateFrameCallbacks?: { (t: number): void }[] // 每帧更新回调
+    updateFrameCallbacks?: Map<string, { (t: number): void }> // 每帧更新回调
 }
 
 /**
@@ -23,7 +23,7 @@ export class VideoExporterWebCodecs {
     private encoder: VideoEncoder | null = null
     private muxer: Muxer<ArrayBufferTarget> | null = null
     private isRecording = false
-    private updateFrameCallbacks: { (t: number): void }[] = []
+    private updateFrameCallbacks: Map<string, { (t: number): void }> = new Map()
 
     constructor(renderer: WGSLRenderer, width: number, height: number) {
         this.renderer = renderer
@@ -35,7 +35,7 @@ export class VideoExporterWebCodecs {
      * 开始录制视频
      */
     async start(options: ExportOptionsWebCodecs): Promise<void> {
-        const { fps, duration, onProgress, updateFrameCallbacks = [] } = options
+        const { fps, duration, onProgress, updateFrameCallbacks = new Map() } = options
         const totalFrames = fps * (duration + 1)
         this.updateFrameCallbacks = updateFrameCallbacks
 

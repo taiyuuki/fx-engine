@@ -1,7 +1,7 @@
 import JSZip from 'jszip'
 import type { EffectData, LayerData, MaterialData, ProjectData } from 'src/types/project'
 import { PROJECT_VERSION } from 'src/types/project'
-import type { ImageLayer } from 'src/stores/layers'
+import type { ImageLayer, Material } from 'src/stores/layers'
 import type { Effect } from 'src/effects'
 import { PropertyType } from 'src/effects'
 
@@ -15,7 +15,7 @@ export class ProjectManager {
    */
     static async exportProject(
         layers: ImageLayer[],
-        materials: Map<string, any>,
+        materials: Map<string, Material>,
         canvasSettings: { width: number; height: number },
         projectName: string,
     ): Promise<void> {
@@ -108,6 +108,57 @@ export class ProjectManager {
         document.body.removeChild(link)
 
         URL.revokeObjectURL(zipUrl)
+    }
+
+    /**
+     * 导出HTML TODO: 导出HTML尚未实现
+     */
+    static async exportHTML(
+        layers: ImageLayer[],
+        materials: Map<string, Material>,
+        canvasSettings: { width: number; height: number },
+        projectName: string,
+    ) {
+        const zip = new JSZip()
+
+        // 1. 压缩所有图片
+        for await (const [name, material] of materials) {
+            const response = await fetch(material.url)
+            const blob = await response.blob()
+            zip.file(name, blob)
+        }
+
+        // 2. 为每个 URL 生成唯一文件名
+        const urlToFilename = new Map<string, string>()
+
+        let fileIndex = 0
+        for (const layer of layers) {
+            const filename = `asset_${fileIndex++}.dat`
+            urlToFilename.set(layer.url, filename)
+        }
+
+        // 3. 序列化项目数据
+        const projectData: ProjectData = {
+            version: PROJECT_VERSION,
+            name: projectName,
+            canvas: {
+                width: canvasSettings.width,
+                height: canvasSettings.height,
+            },
+            layers: layers.map(layer => this.serializeLayer(layer)),
+            materials: this.serializeMaterials(materials),
+            createdAt: new Date().toISOString(),
+            modifiedAt: new Date().toISOString(),
+        }
+
+        // 4. 替换 projectData 中的 URL 为文件名
+        for (const layer of projectData.layers) {
+            const filename = urlToFilename.get(layer.url)
+            if (filename) {
+                layer.url = filename
+            }
+        }
+
     }
 
     /**

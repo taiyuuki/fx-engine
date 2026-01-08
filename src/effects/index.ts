@@ -200,7 +200,7 @@ class Effect {
     }
 
     setResource(index: number, resource: BindingResource, passName?: string) {
-        if (passName) {
+        if (this.isMultiPass) {
             const pass = this.passes?.find(p => p.name === passName)
             if (pass?.resources) {
                 pass.resources[index] = resource

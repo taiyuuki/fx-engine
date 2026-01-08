@@ -20,11 +20,13 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
     const forceUniforms = renderer.createUniforms(12)
 
     // Simulate pass uniforms - simulates ripple propagation
+    // Layout: resolution(vec2) + ripple_speed(f32) + ripple_decay(f32) + frame_time(f32) + use_mask(f32) + use_reflection(f32) + padding
     const simulateUniforms = renderer.createUniforms(8)
+    simulateUniforms.values[6] = 1.0 // use_reflection 默认启用
 
     // Combine pass uniforms - combines ripples with the original image
-    const combineUniforms = renderer.createUniforms(4)
-    simulateUniforms.values[3] = 1.0
+    // Layout: ripple_strength(f32) + use_shading(f32) + shading_amount(f32) + shading_high(vec3) + shading_low(vec3) + shading_direction(f32) + padding
+    const combineUniforms = renderer.createUniforms(16)
 
     // Load shader codes if not already loaded
     if (!forceShaderCode) {
@@ -59,6 +61,13 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             condition: () => simulateUniforms?.values[5] === 1,
         }),
         createProperty({
+            name: 'useReflection',
+            label: '边界反射',
+            type: PropertyType.Checkbox,
+            defaultValue: true,
+            uniformIndex: ['simulate', 6, 1],
+        }),
+        createProperty({
             name: 'rippleScale',
             label: '波纹大小',
             type: PropertyType.Float,
@@ -89,6 +98,47 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             defaultValue: 1.0,
             uniformIndex: ['combine', 0, 1],
             range: [0.0, 4.0],
+        }),
+        createProperty({
+            name: 'useShading',
+            label: '使用着色',
+            type: PropertyType.Checkbox,
+            defaultValue: false,
+            uniformIndex: ['combine', 1, 1],
+        }),
+        createProperty({
+            name: 'shadingAmount',
+            label: '着色强度',
+            type: PropertyType.Float,
+            defaultValue: 1.0,
+            uniformIndex: ['combine', 2, 1],
+            range: [0.0, 2.0],
+            condition: () => combineUniforms.values[1] === 1,
+        }),
+        createProperty({
+            name: 'shadingHigh',
+            label: '高光颜色',
+            type: PropertyType.Color,
+            defaultValue: [1, 1, 1],
+            uniformIndex: ['combine', 3, 3],
+            condition: () => combineUniforms.values[1] === 1,
+        }),
+        createProperty({
+            name: 'shadingLow',
+            label: '阴影颜色',
+            type: PropertyType.Color,
+            defaultValue: [0, 0, 0],
+            uniformIndex: ['combine', 6, 3],
+            condition: () => combineUniforms.values[1] === 1,
+        }),
+        createProperty({
+            name: 'shadingDirection',
+            label: '光照方向',
+            type: PropertyType.Angle,
+            defaultValue: 0.0,
+            uniformIndex: ['combine', 9, 1],
+            range: [0.0, 360],
+            condition: () => combineUniforms.values[1] === 1,
         }),
     ]
 
@@ -135,10 +185,10 @@ export async function createCursorRippleEffect(name: string, renderer: WGSLRende
             name,
             shaderCode: combineShaderCode,
             resources: [
-                samplerStore.getSampler('linear', renderer), // @group(0) @binding(0) sampler
-                combineUniforms.getBuffer(), // @group(0) @binding(1) uniforms
-                textures.baseTexture, // @group(0) @binding(2) sourceTexture (will be set by renderer from previous pass)
-                rippleTextureA.createView(), // @group(0) @binding(3) rippleTexture (read simulation result)
+                textures.baseTexture, // @group(0) @binding(0) sourceTexture (will be set by renderer from previous pass)
+                rippleTextureA.createView(), // @group(0) @binding(2) rippleTexture (read simulation result)
+                samplerStore.getSampler('linear', renderer), // @group(0) @binding(3) sampler
+                combineUniforms.getBuffer(), // @group(0) @binding(4) uniforms
             ],
         },
 
